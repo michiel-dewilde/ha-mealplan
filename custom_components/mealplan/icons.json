@@ -1,0 +1,38 @@
+{
+  "entity": {
+    "todo": {
+      "shopping": { "default": "mdi:cart-outline" },
+      "later": { "default": "mdi:cart-arrow-right" },
+      "stock": { "default": "mdi:fridge-outline" }
+    },
+    "calendar": {
+      "meal_plan": { "default": "mdi:silverware-fork-knife" }
+    },
+    "select": {
+      "store": { "default": "mdi:storefront-outline" }
+    },
+    "sensor": {
+      "summary": { "default": "mdi:clipboard-list-outline" }
+    }
+  },
+  "services": {
+    "add_dish": "mdi:pot-steam-outline",
+    "running_low": "mdi:cart-plus",
+    "plan_menu": "mdi:calendar-edit",
+    "complete_all": "mdi:check-all",
+    "sort_list": "mdi:sort",
+    "set_expiry": "mdi:calendar-alert",
+    "add_stock": "mdi:fridge-alert-outline",
+    "learn_dish": "mdi:book-plus-outline",
+    "learn_article": "mdi:tag-plus-outline",
+    "set_window": "mdi:arrow-expand-horizontal",
+    "print_list": "mdi:printer-outline",
+    "import_knowledge": "mdi:database-import-outline",
+    "export_knowledge": "mdi:database-export-outline",
+    "get_week": "mdi:calendar-week",
+    "list_dishes": "mdi:format-list-bulleted",
+    "get_pantry_check": "mdi:cupboard-outline",
+    "get_expiring": "mdi:clock-alert-outline",
+    "suggest_menu": "mdi:lightbulb-on-outline"
+  }
+}

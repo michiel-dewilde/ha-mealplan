@@ -1,0 +1,268 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Weekplanning",
+        "description": "Zet een weekmenu en een boodschappenlijst op. De agenda's die je kiest worden alleen gelezen — er wordt nooit iets in geschreven.",
+        "data": {
+          "name": "Naam",
+          "calendars": "Agenda's om te lezen",
+          "week_start": "Week begint op",
+          "menu_days": "Dagen in het menuvenster",
+          "rollover_day": "Schuif door naar de volgende week op",
+          "undated_stock": "Voorraaditems zonder vervaldatum toelaten"
+        },
+        "data_description": {
+          "calendars": "Verschijnen naast elke dag op het menuscherm. Er wordt nooit in geschreven.",
+          "menu_days": "Hoeveel dagen het menuscherm tegelijk toont.",
+          "rollover_day": "Vanaf deze weekdag toont het menuscherm het komende venster in plaats van het lopende.",
+          "undated_stock": "“Er ligt nog een halve komkommer.” Items zonder datum blijven staan tot je ze afvinkt; er verdwijnt niets vanzelf."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Er bestaat al een weekplanning met die naam."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Planningsinstellingen",
+        "data": {
+          "calendars": "Agenda's om te lezen",
+          "week_start": "Week begint op",
+          "menu_days": "Dagen in het menuvenster",
+          "rollover_day": "Schuif door naar de volgende week op",
+          "undated_stock": "Voorraaditems zonder vervaldatum toelaten"
+        },
+        "data_description": {
+          "calendars": "Verschijnen naast elke dag op het menuscherm. Er wordt nooit in geschreven.",
+          "menu_days": "Hoeveel dagen het menuscherm tegelijk toont.",
+          "rollover_day": "Vanaf deze weekdag toont het menuscherm het komende venster in plaats van het lopende.",
+          "undated_stock": "Items zonder datum blijven staan tot je ze afvinkt; er verdwijnt niets vanzelf."
+        }
+      }
+    }
+  },
+  "entity": {
+    "todo": {
+      "shopping": { "name": "Boodschappen" },
+      "later": { "name": "Volgende beurt" },
+      "stock": { "name": "In huis" }
+    },
+    "calendar": {
+      "meal_plan": { "name": "Weekmenu" }
+    },
+    "select": {
+      "store": { "name": "Winkel" }
+    },
+    "sensor": {
+      "summary": { "name": "Overzicht" }
+    }
+  },
+  "selector": {
+    "weekday": {
+      "options": {
+        "mon": "Maandag",
+        "tue": "Dinsdag",
+        "wed": "Woensdag",
+        "thu": "Donderdag",
+        "fri": "Vrijdag",
+        "sat": "Zaterdag",
+        "sun": "Zondag"
+      }
+    },
+    "when": {
+      "options": {
+        "now": "Deze beurt",
+        "later": "Volgende beurt"
+      }
+    },
+    "pantry_scope": {
+      "options": {
+        "general": "Alles wat toe is",
+        "menu": "Voor het geplande menu"
+      }
+    },
+    "shelf_life": {
+      "options": {
+        "important": "Belangrijk — volg van bij het kopen",
+        "near_only": "Enkel dichtbij — er staat een datum op, maar die is weken weg",
+        "ignore": "Niet bijhouden"
+      }
+    }
+  },
+  "services": {
+    "add_dish": {
+      "name": "Gerecht op de lijst",
+      "description": "Zet de versartikelen van een gerecht op de boodschappenlijst. Kastartikelen worden getoond, niet toegevoegd.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "dish": { "name": "Gerecht", "description": "Het gerecht, onder de naam die jullie er zelf voor gebruiken." },
+        "servings": { "name": "Aantal keer", "description": "Een vermenigvuldiger voor bezoek. Komt als notitie bij de items; er wordt niets berekend." },
+        "include_pantry": { "name": "Kastartikelen mee", "description": "Zet de kastartikelen er ook op in plaats van ze alleen te tonen." }
+      }
+    },
+    "running_low": {
+      "name": "Bijna op",
+      "description": "Zet één artikel dat bijna op is op een lijst.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "article": { "name": "Artikel", "description": "Wat bijna op is." },
+        "when": { "name": "Welke beurt", "description": "Deze beurt, of de volgende." }
+      }
+    },
+    "plan_menu": {
+      "name": "Dag plannen",
+      "description": "Zet een gerecht op een datum. Vult de boodschappenlijst nooit stilzwijgend aan.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "date": { "name": "Datum", "description": "De dag die je plant." },
+        "dish": { "name": "Gerecht", "description": "Leeg laten houdt de dag open — dat is een normale toestand." },
+        "note": { "name": "Notitie", "description": "Vrije tekst bij die dag. Hoort bij de planning; komt in geen enkele agenda terecht." },
+        "people": { "name": "Aantal personen", "description": "Met hoeveel er gegeten wordt, als dat uitmaakt." },
+        "clear": { "name": "Leegmaken", "description": "Maak de dag helemaal leeg." }
+      }
+    },
+    "complete_all": {
+      "name": "Lijst afsluiten",
+      "description": "Vinkt alles op de boodschappenlijst af, behalve wat je noemt.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "except_items": { "name": "Behalve", "description": "Wat er niet gekocht is." }
+      }
+    },
+    "sort_list": {
+      "name": "Lijst sorteren",
+      "description": "Zet de openstaande items in de looproute van een winkel.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "store": { "name": "Winkel", "description": "Standaard de geselecteerde winkel." }
+      }
+    },
+    "set_expiry": {
+      "name": "Vervaldatum zetten",
+      "description": "Noteert wanneer iets in huis vervalt.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "article": { "name": "Artikel", "description": "Wat er in de koelkast ligt." },
+        "expiry": { "name": "Vervaldatum", "description": "De datum op de verpakking." }
+      }
+    },
+    "add_stock": {
+      "name": "Noteren wat er ligt",
+      "description": "Zet iets op de voorraadlijst, met of zonder vervaldatum.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "article": { "name": "Artikel", "description": "Wat er in huis is." },
+        "expiry": { "name": "Vervaldatum", "description": "Leeg laten voor iets dat gewoon opgebruikt moet worden." }
+      }
+    },
+    "learn_dish": {
+      "name": "Gerecht aanleren",
+      "description": "Voegt een gerecht met zijn ingrediënten toe, of vult een bekend gerecht aan.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "dish": { "name": "Gerecht", "description": "De naam die jullie gebruiken." },
+        "ingredients": { "name": "Ingrediënten", "description": "Artikelnamen." },
+        "usual_day": { "name": "Vaste weekdag", "description": "Als dit gerecht meestal op één dag valt." },
+        "recipe_list": { "name": "Receptnaam", "description": "De naam in een receptenlijst, als die anders is." }
+      }
+    },
+    "learn_article": {
+      "name": "Artikel plaatsen",
+      "description": "Zet een artikel in een afdeling — de ene tik die onbekend bekend maakt.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "article": { "name": "Artikel", "description": "Het artikel dat je plaatst." },
+        "department": { "name": "Afdeling", "description": "Een afdelingssleutel, bijvoorbeeld produce of butcher." },
+        "shelf_life": { "name": "Vervaldatum volgen", "description": "Standaard wat de afdeling zegt." },
+        "staple": { "name": "Snelknop", "description": "Toon dit artikel als snelknop." },
+        "availability": { "name": "Enkel te krijgen bij", "description": "Een winkelnaam, als het er alleen daar is." }
+      }
+    },
+    "set_window": {
+      "name": "Venster oprekken",
+      "description": "Rekt het menuvenster op, of zet het terug op zijn gewone lengte.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "end": { "name": "Einddatum", "description": "Een bepaalde einddatum." },
+        "extend_days": { "name": "Oprekken met", "description": "Dagen bij het huidige einde." },
+        "reset": { "name": "Terugzetten", "description": "Terug naar de gewone lengte." }
+      }
+    },
+    "print_list": {
+      "name": "Lijst afdrukken",
+      "description": "Geeft de boodschappenlijst als afdrukbaar blad: één A4, twee kolommen, afdelingskoppen, een vakje per item.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." }
+      }
+    },
+    "import_knowledge": {
+      "name": "Kennis importeren",
+      "description": "Zaait afdelingen, winkels, artikelen en gerechten uit een kennisbestand. Een versnelling, geen voorwaarde.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "knowledge": { "name": "Kennis", "description": "Een kennisobject volgens schema 2.0." },
+        "replace": { "name": "Afdelingen vervangen", "description": "Vervang de afdelingenlijst in plaats van ze samen te voegen." }
+      }
+    },
+    "export_knowledge": {
+      "name": "Kennis klaarzetten",
+      "description": "Geeft alles terug wat er nu geweten is, gezaaid en bijgeleerd samen, klaar om op te halen.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." }
+      }
+    },
+    "get_week": {
+      "name": "Week opvragen",
+      "description": "Geeft het menu van een week terug, met de agenda-items en notities per dag.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "start": { "name": "Begin", "description": "Standaard het lopende planningsvenster." }
+      }
+    },
+    "list_dishes": {
+      "name": "Gerechten opsommen",
+      "description": "Geeft alle gerechten terug met frequentie, laatst gegeten, vaste weekdag en ingrediënten.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." }
+      }
+    },
+    "get_pantry_check": {
+      "name": "Wat nakijken",
+      "description": "Geeft de kastartikelen terug die je best nakijkt.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "scope": { "name": "Bereik", "description": "Alles wat volgens zijn cadans toe is, of de kastartikelen van het geplande menu." }
+      }
+    },
+    "get_expiring": {
+      "name": "Wat vervalt",
+      "description": "Geeft terug wat er binnen zoveel dagen vervalt.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "days": { "name": "Dagen", "description": "Hoe ver vooruit je kijkt." }
+      }
+    },
+    "suggest_menu": {
+      "name": "Menu voorstellen",
+      "description": "Stelt gerechten voor voor de lege dagen. Alleen gerechten — nooit een boodschappenlijst.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "start": { "name": "Begin", "description": "Standaard het lopende planningsvenster." },
+        "days": { "name": "Dagen", "description": "Voor hoeveel dagen je een voorstel wil." },
+        "limit": { "name": "Kandidaten per dag", "description": "Hoeveel voorstellen je per dag terugkrijgt." }
+      }
+    }
+  },
+  "exceptions": {
+    "unknown_dish": { "message": "Er is geen gerecht “{dish}”. Leer het eerst aan met Gerecht aanleren." },
+    "unknown_department": { "message": "Er is geen afdeling “{department}”." },
+    "unknown_entry": { "message": "Er is geen weekplanning met id {entry_id}." },
+    "no_meal_plan": { "message": "Er is geen weekplanning ingesteld." },
+    "ambiguous_meal_plan": { "message": "Er is meer dan één weekplanning. Zeg welke." },
+    "undated_stock_disabled": { "message": "Voorraaditems zonder vervaldatum staan uit voor deze weekplanning." },
+    "unsupported_schema": { "message": "Dit kennisbestand gebruikt schema {schema}; deze versie leest {expected}." }
+  }
+}

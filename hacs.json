@@ -1,0 +1,8 @@
+{
+  "name": "Meal Plan",
+  "hacs": "2.0.5",
+  "homeassistant": "2026.7.0",
+  "filename": "mealplan.zip",
+  "render_readme": true,
+  "zip_release": true
+}

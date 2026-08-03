@@ -1,0 +1,185 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Constants for the Meal Plan integration."""
+
+from __future__ import annotations
+
+from enum import StrEnum
+from typing import Final
+
+DOMAIN: Final = "mealplan"
+
+# Storage
+STORAGE_KEY: Final = f"{DOMAIN}.data"
+STORAGE_VERSION: Final = 1
+
+# The knowledge file schema this integration reads and writes.
+KNOWLEDGE_SCHEMA: Final = "2.0"
+
+# Configuration
+CONF_CALENDARS: Final = "calendars"
+CONF_WEEK_START: Final = "week_start"
+CONF_MENU_DAYS: Final = "menu_days"
+CONF_ROLLOVER_DAY: Final = "rollover_day"
+CONF_UNDATED_STOCK: Final = "undated_stock"
+
+DEFAULT_NAME: Final = "Meal plan"
+DEFAULT_WEEK_START: Final = "sat"
+DEFAULT_MENU_DAYS: Final = 7
+DEFAULT_ROLLOVER_DAY: Final = "thu"
+DEFAULT_UNDATED_STOCK: Final = True
+
+MIN_MENU_DAYS: Final = 1
+MAX_MENU_DAYS: Final = 21
+
+# Weekdays, in the order Python's date.weekday() uses.
+WEEKDAYS: Final[tuple[str, ...]] = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+# The department an unclassified article lands in. Always sorted last.
+UNKNOWN_DEPARTMENT: Final = "unknown"
+
+# How often an unknown article must appear before learning it is suggested.
+LEARN_SUGGESTION_THRESHOLD: Final = 3
+
+# Fallback cadence when an article has never been bought twice.
+DEFAULT_PANTRY_CADENCE_DAYS: Final = 42
+
+
+class Kind(StrEnum):
+    """Why an article ends up on the shopping list."""
+
+    FRESH = "fresh"
+    """Because a meal is planned."""
+
+    PANTRY = "pantry"
+    """Because it ran low."""
+
+
+class ShelfLife(StrEnum):
+    """How much attention an expiry date deserves."""
+
+    IMPORTANT = "important"
+    """Track from the moment it is bought, and ask for it."""
+
+    NEAR_ONLY = "near_only"
+    """There is a date, but it is weeks away. Only surface it once it is close."""
+
+    IGNORE = "ignore"
+    """Do not track a date at all."""
+
+
+class Certainty(StrEnum):
+    """How sure we are that an ingredient belongs to a dish."""
+
+    CERTAIN = "certain"
+    LIKELY = "likely"
+    POSSIBLE = "possible"
+
+
+class IngredientSource(StrEnum):
+    """Where the knowledge about an ingredient came from."""
+
+    RECIPE_LIST = "recipe_list"
+    DAY_NOTE = "day_note"
+    CO_OCCURRENCE = "co_occurrence"
+    MANUAL = "manual"
+
+
+class DepartmentSource(StrEnum):
+    """How an article's department was decided."""
+
+    TABLE = "table"
+    RULE = "rule"
+    FROZEN_MARKER = "frozen_marker"
+    MANUAL = "manual"
+    UNKNOWN = "unknown"
+
+
+class StoreSource(StrEnum):
+    """How a store's department order was arrived at."""
+
+    DERIVED = "derived"
+    """Measured from real lists."""
+
+    FRAMEWORK = "framework"
+    """An assumption. Not backed by data."""
+
+    MANUAL = "manual"
+
+
+class ListName(StrEnum):
+    """The three to-do lists this integration owns."""
+
+    SHOPPING = "shopping"
+    """This trip."""
+
+    LATER = "later"
+    """Next trip. The underlined `later` block that was already on the paper."""
+
+    STOCK = "stock"
+    """Perishables worth keeping an eye on. Not a stock count."""
+
+
+class When(StrEnum):
+    """Which shopping trip an article is meant for."""
+
+    NOW = "now"
+    LATER = "later"
+
+
+class PantryScope(StrEnum):
+    """Which pantry articles to check."""
+
+    GENERAL = "general"
+    """Everything that is due by its own cadence."""
+
+    MENU = "menu"
+    """The pantry ingredients of the dishes currently planned."""
+
+
+# Services
+SERVICE_ADD_DISH: Final = "add_dish"
+SERVICE_RUNNING_LOW: Final = "running_low"
+SERVICE_PLAN_MENU: Final = "plan_menu"
+SERVICE_COMPLETE_ALL: Final = "complete_all"
+SERVICE_SORT_LIST: Final = "sort_list"
+SERVICE_SET_EXPIRY: Final = "set_expiry"
+SERVICE_LEARN_DISH: Final = "learn_dish"
+SERVICE_PRINT_LIST: Final = "print_list"
+SERVICE_IMPORT_KNOWLEDGE: Final = "import_knowledge"
+SERVICE_EXPORT_KNOWLEDGE: Final = "export_knowledge"
+
+SERVICE_GET_WEEK: Final = "get_week"
+SERVICE_LIST_DISHES: Final = "list_dishes"
+SERVICE_GET_PANTRY_CHECK: Final = "get_pantry_check"
+SERVICE_GET_EXPIRING: Final = "get_expiring"
+SERVICE_SUGGEST_MENU: Final = "suggest_menu"
+
+# Service fields
+ATTR_ARTICLE: Final = "article"
+ATTR_ARTICLES: Final = "articles"
+ATTR_DATE: Final = "date"
+ATTR_DAYS: Final = "days"
+ATTR_DISH: Final = "dish"
+ATTR_ENTRY_ID: Final = "entry_id"
+ATTR_EXCEPT_ITEMS: Final = "except_items"
+ATTR_EXPIRY: Final = "expiry"
+ATTR_INCLUDE_PANTRY: Final = "include_pantry"
+ATTR_INGREDIENTS: Final = "ingredients"
+ATTR_KNOWLEDGE: Final = "knowledge"
+ATTR_LIMIT: Final = "limit"
+ATTR_NOTE: Final = "note"
+ATTR_PEOPLE: Final = "people"
+ATTR_SCOPE: Final = "scope"
+ATTR_SERVINGS: Final = "servings"
+ATTR_START: Final = "start"
+ATTR_STORE: Final = "store"
+ATTR_WHEN: Final = "when"
+
+# Dispatcher signal fired whenever the stored data changed.
+SIGNAL_UPDATED: Final = f"{DOMAIN}_updated"
+
+# HTTP
+PRINT_URL: Final = f"/api/{DOMAIN}/print"
+
+# Number of days an expiry counts as "urgent" on the dashboard.
+URGENT_EXPIRY_DAYS: Final = 2

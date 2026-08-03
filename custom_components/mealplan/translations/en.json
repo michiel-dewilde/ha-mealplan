@@ -1,0 +1,268 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Meal Plan",
+        "description": "Set up a meal plan and shopping list. The calendars you pick are only ever read — nothing is written back to them.",
+        "data": {
+          "name": "Name",
+          "calendars": "Calendars to read",
+          "week_start": "Week starts on",
+          "menu_days": "Days in the menu window",
+          "rollover_day": "Roll over to the next week on",
+          "undated_stock": "Allow stock items without an expiry date"
+        },
+        "data_description": {
+          "calendars": "Shown next to each day on the menu screen. Never written to.",
+          "menu_days": "How many days the menu screen shows at once.",
+          "rollover_day": "From this weekday on, the menu screen shows the coming window instead of the current one.",
+          "undated_stock": "“There is still half a cucumber.” Undated items stay until you complete them; nothing disappears on its own."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "A meal plan with that name already exists."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Planning settings",
+        "data": {
+          "calendars": "Calendars to read",
+          "week_start": "Week starts on",
+          "menu_days": "Days in the menu window",
+          "rollover_day": "Roll over to the next week on",
+          "undated_stock": "Allow stock items without an expiry date"
+        },
+        "data_description": {
+          "calendars": "Shown next to each day on the menu screen. Never written to.",
+          "menu_days": "How many days the menu screen shows at once.",
+          "rollover_day": "From this weekday on, the menu screen shows the coming window instead of the current one.",
+          "undated_stock": "Undated items stay until you complete them; nothing disappears on its own."
+        }
+      }
+    }
+  },
+  "entity": {
+    "todo": {
+      "shopping": { "name": "Shopping list" },
+      "later": { "name": "Next trip" },
+      "stock": { "name": "In the house" }
+    },
+    "calendar": {
+      "meal_plan": { "name": "Meal plan" }
+    },
+    "select": {
+      "store": { "name": "Store" }
+    },
+    "sensor": {
+      "summary": { "name": "Summary" }
+    }
+  },
+  "selector": {
+    "weekday": {
+      "options": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
+      }
+    },
+    "when": {
+      "options": {
+        "now": "This trip",
+        "later": "Next trip"
+      }
+    },
+    "pantry_scope": {
+      "options": {
+        "general": "Everything due",
+        "menu": "For the planned menu"
+      }
+    },
+    "shelf_life": {
+      "options": {
+        "important": "Important — track from the moment it is bought",
+        "near_only": "Only when close — there is a date, but it is weeks away",
+        "ignore": "Do not track"
+      }
+    }
+  },
+  "services": {
+    "add_dish": {
+      "name": "Add dish to list",
+      "description": "Puts a dish's fresh ingredients on the shopping list. Pantry ingredients are reported back rather than added.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "dish": { "name": "Dish", "description": "The dish, by the name the household uses for it." },
+        "servings": { "name": "Servings", "description": "A multiplier for guests. Noted on the items; nothing is calculated." },
+        "include_pantry": { "name": "Include pantry items", "description": "Add the pantry ingredients too instead of only reporting them." }
+      }
+    },
+    "running_low": {
+      "name": "Running low",
+      "description": "Puts one article that is running low on a list.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "article": { "name": "Article", "description": "What is running low." },
+        "when": { "name": "Which trip", "description": "This trip, or the next one." }
+      }
+    },
+    "plan_menu": {
+      "name": "Plan a day",
+      "description": "Puts a dish on a date. Never adds anything to the shopping list.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "date": { "name": "Date", "description": "The day to plan." },
+        "dish": { "name": "Dish", "description": "Leave empty to keep the day open — that is a normal state." },
+        "note": { "name": "Note", "description": "Free text for that day. Stays with the plan; never written to a calendar." },
+        "people": { "name": "People", "description": "How many are eating, if it matters." },
+        "clear": { "name": "Clear", "description": "Empty the day completely." }
+      }
+    },
+    "complete_all": {
+      "name": "Complete the list",
+      "description": "Completes everything on the shopping list, except the items you name.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "except_items": { "name": "Except", "description": "Items that were not bought." }
+      }
+    },
+    "sort_list": {
+      "name": "Sort the list",
+      "description": "Reorders the open items into the walking route of a store.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "store": { "name": "Store", "description": "Defaults to the selected store." }
+      }
+    },
+    "set_expiry": {
+      "name": "Set expiry date",
+      "description": "Records when something in the house goes off.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "article": { "name": "Article", "description": "What is in the fridge." },
+        "expiry": { "name": "Expiry date", "description": "The date on the packaging." }
+      }
+    },
+    "add_stock": {
+      "name": "Note what is in the house",
+      "description": "Adds something to the stock list, with or without an expiry date.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "article": { "name": "Article", "description": "What is in the house." },
+        "expiry": { "name": "Expiry date", "description": "Leave empty for something that simply needs using up." }
+      }
+    },
+    "learn_dish": {
+      "name": "Learn a dish",
+      "description": "Adds a dish and its ingredients, or extends one that is already known.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "dish": { "name": "Dish", "description": "The name the household uses." },
+        "ingredients": { "name": "Ingredients", "description": "Article names." },
+        "usual_day": { "name": "Usual weekday", "description": "If this dish tends to fall on one day." },
+        "recipe_list": { "name": "Recipe name", "description": "The name in a recipe collection, if it differs." }
+      }
+    },
+    "learn_article": {
+      "name": "Place an article",
+      "description": "Puts an article in a department — the one tap that turns unknown into known.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "article": { "name": "Article", "description": "The article to place." },
+        "department": { "name": "Department", "description": "A department key, for example produce or butcher." },
+        "shelf_life": { "name": "Expiry tracking", "description": "Defaults to whatever the department says." },
+        "staple": { "name": "Quick button", "description": "Show this article as a quick button." },
+        "availability": { "name": "Only available at", "description": "A store name, if it is only sold there." }
+      }
+    },
+    "set_window": {
+      "name": "Stretch the window",
+      "description": "Stretches the menu window, or puts it back to its natural length.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "end": { "name": "End date", "description": "A specific end date." },
+        "extend_days": { "name": "Extend by", "description": "Days to add to the current end." },
+        "reset": { "name": "Reset", "description": "Back to the natural length." }
+      }
+    },
+    "print_list": {
+      "name": "Print the list",
+      "description": "Returns the shopping list as a printable page: one A4, two columns, department headings, a box per item.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." }
+      }
+    },
+    "import_knowledge": {
+      "name": "Import knowledge",
+      "description": "Seeds departments, stores, articles and dishes from a knowledge file. An accelerator, not a prerequisite.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "knowledge": { "name": "Knowledge", "description": "A schema 2.0 knowledge object." },
+        "replace": { "name": "Replace departments", "description": "Replace the department list instead of merging into it." }
+      }
+    },
+    "export_knowledge": {
+      "name": "Export knowledge",
+      "description": "Returns everything currently known, seeded and learned together, ready to be fetched.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." }
+      }
+    },
+    "get_week": {
+      "name": "Get the week",
+      "description": "Returns a week's menu with each day's calendar entries and notes.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "start": { "name": "Start", "description": "Defaults to the current planning window." }
+      }
+    },
+    "list_dishes": {
+      "name": "List dishes",
+      "description": "Returns every dish with its frequency, last served, usual weekday and ingredients.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." }
+      }
+    },
+    "get_pantry_check": {
+      "name": "What to check",
+      "description": "Returns the pantry articles worth checking you still have.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "scope": { "name": "Scope", "description": "Everything due by its cadence, or the pantry items of the planned menu." }
+      }
+    },
+    "get_expiring": {
+      "name": "What is expiring",
+      "description": "Returns what goes off within a number of days.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "days": { "name": "Days", "description": "How far ahead to look." }
+      }
+    },
+    "suggest_menu": {
+      "name": "Suggest a menu",
+      "description": "Suggests dishes for the empty days. Dishes only — never a shopping list.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "start": { "name": "Start", "description": "Defaults to the current planning window." },
+        "days": { "name": "Days", "description": "How many days to suggest for." },
+        "limit": { "name": "Candidates per day", "description": "How many suggestions to return per day." }
+      }
+    }
+  },
+  "exceptions": {
+    "unknown_dish": { "message": "There is no dish called “{dish}”. Teach it first with Learn a dish." },
+    "unknown_department": { "message": "There is no department called “{department}”." },
+    "unknown_entry": { "message": "There is no meal plan with id {entry_id}." },
+    "no_meal_plan": { "message": "No meal plan is set up." },
+    "ambiguous_meal_plan": { "message": "There is more than one meal plan. Say which one." },
+    "undated_stock_disabled": { "message": "Stock items without an expiry date are switched off for this meal plan." },
+    "unsupported_schema": { "message": "This knowledge file uses schema {schema}; this version reads {expected}." }
+  }
+}

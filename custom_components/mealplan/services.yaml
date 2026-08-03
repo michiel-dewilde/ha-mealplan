@@ -1,0 +1,287 @@
+add_dish:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    dish:
+      required: true
+      example: tacos
+      selector:
+        text:
+    servings:
+      selector:
+        number:
+          min: 1
+          max: 50
+          mode: box
+    include_pantry:
+      selector:
+        boolean:
+
+running_low:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    article:
+      required: true
+      selector:
+        text:
+    when:
+      default: now
+      selector:
+        select:
+          translation_key: when
+          options:
+            - now
+            - later
+
+plan_menu:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    date:
+      required: true
+      selector:
+        date:
+    dish:
+      selector:
+        text:
+    note:
+      selector:
+        text:
+          multiline: true
+    people:
+      selector:
+        number:
+          min: 1
+          max: 50
+          mode: box
+    clear:
+      selector:
+        boolean:
+
+complete_all:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    except_items:
+      selector:
+        object:
+
+sort_list:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    store:
+      selector:
+        text:
+
+set_expiry:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    article:
+      required: true
+      selector:
+        text:
+    expiry:
+      required: true
+      selector:
+        date:
+
+add_stock:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    article:
+      required: true
+      selector:
+        text:
+    expiry:
+      selector:
+        date:
+
+learn_dish:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    dish:
+      required: true
+      selector:
+        text:
+    ingredients:
+      selector:
+        object:
+    usual_day:
+      selector:
+        select:
+          translation_key: weekday
+          options:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+    recipe_list:
+      selector:
+        text:
+
+learn_article:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    article:
+      required: true
+      selector:
+        text:
+    department:
+      required: true
+      selector:
+        text:
+    shelf_life:
+      selector:
+        select:
+          translation_key: shelf_life
+          options:
+            - important
+            - near_only
+            - ignore
+    staple:
+      selector:
+        boolean:
+    availability:
+      selector:
+        text:
+
+set_window:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    end:
+      selector:
+        date:
+    extend_days:
+      selector:
+        number:
+          min: 1
+          max: 60
+          mode: box
+    reset:
+      selector:
+        boolean:
+
+print_list:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+
+import_knowledge:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    knowledge:
+      required: true
+      selector:
+        object:
+    replace:
+      selector:
+        boolean:
+
+export_knowledge:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+
+get_week:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    start:
+      selector:
+        date:
+
+list_dishes:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+
+get_pantry_check:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    scope:
+      default: general
+      selector:
+        select:
+          translation_key: pantry_scope
+          options:
+            - general
+            - menu
+
+get_expiring:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    days:
+      selector:
+        number:
+          min: 0
+          max: 365
+          mode: box
+
+suggest_menu:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    start:
+      selector:
+        date:
+    days:
+      selector:
+        number:
+          min: 1
+          max: 31
+          mode: box
+    limit:
+      selector:
+        number:
+          min: 1
+          max: 10
+          mode: box
