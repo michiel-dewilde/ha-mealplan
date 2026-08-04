@@ -1,10 +1,10 @@
 {
   "domain": "mealplan",
   "name": "Meal Plan",
+  "after_dependencies": ["calendar", "conversation"],
   "codeowners": ["@michiel-dewilde"],
   "config_flow": true,
   "dependencies": ["http"],
-  "after_dependencies": ["calendar", "conversation"],
   "documentation": "https://github.com/michiel-dewilde/ha-mealplan",
   "integration_type": "service",
   "iot_class": "local_push",
