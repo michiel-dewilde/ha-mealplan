@@ -441,14 +441,10 @@ def get_pantry_check(ctx: Context, scope: PantryScope = PantryScope.GENERAL) -> 
         names: list[str] = []
         for dish in store.planned_dishes(window.start, window.end):
             names += [name for name in store.dish_ingredients(dish, Kind.PANTRY) if name not in names]
-        reason = "menu"
+        reasons = dict.fromkeys(names, "menu")
     else:
-        names = sorted(
-            article.name
-            for article in store.data.articles.values()
-            if store.article_kind(article.name) == Kind.PANTRY and store.is_due(article.name, ctx.today)
-        )
-        reason = "cadence"
+        reasons = _due_pantry_articles(ctx)
+        names = sorted(reasons)
 
     on_list = {item.summary.casefold() for item in store.open_items(ListName.SHOPPING)}
     return {
@@ -456,7 +452,7 @@ def get_pantry_check(ctx: Context, scope: PantryScope = PantryScope.GENERAL) -> 
         "articles": [
             {
                 "article": name,
-                "reason": reason,
+                "reason": reasons[name],
                 "last_listed": last.isoformat() if (last := store.last_listed(name)) else None,
                 "cadence_days": store.cadence_days(name),
                 "already_listed": name.casefold() in on_list,
@@ -464,6 +460,33 @@ def get_pantry_check(ctx: Context, scope: PantryScope = PantryScope.GENERAL) -> 
             for name in names
         ],
     }
+
+
+def _due_pantry_articles(ctx: Context) -> dict[str, str]:
+    """Return the pantry articles to check, and why.
+
+    A seeded article knows how often it comes round but not when it last did —
+    the knowledge file carries a cadence, not a date. Until this installation
+    has seen the article go onto a list itself, "is it due?" has no honest
+    answer, and returning nothing at all would make the whole question useless
+    on a freshly seeded system.
+
+    So there are two reasons an article shows up: `cadence`, once there is
+    something to measure against, and `no_history` for the staples we simply
+    have not watched long enough yet. The second kind disappears by itself as
+    the first kind takes over.
+    """
+    store = ctx.store
+    due: dict[str, str] = {}
+    for article in store.data.articles.values():
+        if store.article_kind(article.name) != Kind.PANTRY:
+            continue
+        if store.last_listed(article.name) is not None:
+            if store.is_due(article.name, ctx.today):
+                due[article.name] = "cadence"
+        elif article.staple:
+            due[article.name] = "no_history"
+    return due
 
 
 def get_expiring(ctx: Context, days: int = DEFAULT_EXPIRY_HORIZON_DAYS) -> dict[str, Any]:

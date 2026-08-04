@@ -55,16 +55,16 @@ class MealPlanCalendar(MealPlanEntity, CalendarEntity):
 
         An empty day is a normal state — roughly a quarter of them are left open
         on purpose — so it simply has no event rather than an empty one.
+
+        The day note is deliberately left out. It belongs to the plan, not to a
+        calendar, and this entity is the one thing here that can be subscribed
+        to, exported or synced onward. Publishing what is on the table is the
+        point; publishing "eating later, training" is not.
         """
         entry = self._store.day(day)
         if not entry.dish:
             return None
-        return CalendarEvent(
-            start=day,
-            end=day + timedelta(days=1),
-            summary=entry.dish,
-            description=entry.note,
-        )
+        return CalendarEvent(start=day, end=day + timedelta(days=1), summary=entry.dish)
 
     @property
     def event(self) -> CalendarEvent | None:

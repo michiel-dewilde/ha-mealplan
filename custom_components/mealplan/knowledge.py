@@ -17,7 +17,7 @@ from typing import Any
 
 from homeassistant.exceptions import ServiceValidationError
 
-from .const import DOMAIN, KNOWLEDGE_SCHEMA
+from .const import DOMAIN, KNOWLEDGE_SCHEMA, UNKNOWN_DEPARTMENT, DepartmentSource, ShelfLife
 from .models import Article, Department, Dish, StoreOrder
 from .store import MealPlanStore
 
@@ -66,6 +66,7 @@ def import_knowledge(store: MealPlanStore, payload: dict[str, Any], *, replace: 
     for raw in payload.get("dishes") or []:
         dish = Dish.from_dict(raw)
         data.dishes[dish.name] = dish
+        _adopt_ingredient_articles(store, dish)
 
     data.source = {
         "schema": schema or KNOWLEDGE_SCHEMA,
@@ -80,6 +81,39 @@ def import_knowledge(store: MealPlanStore, payload: dict[str, Any], *, replace: 
         "articles": len(data.articles),
         "dishes": len(data.dishes),
     }
+
+
+def _adopt_ingredient_articles(store: MealPlanStore, dish: Dish) -> None:
+    """Make sure every ingredient a dish names exists as an article.
+
+    An ingredient is supposed to reference an article by name, but a knowledge
+    file can list ingredients that never appeared on a shopping list under that
+    name — a recipe asks for shallots, the list has always said onions. Without
+    this, those ingredients land in `unknown` at the bottom of the list even
+    though the file said which department they belong to.
+
+    The ingredient's own department is what we go on: it is a statement about
+    the article, and it is the only one we have.
+
+    This also picks up articles that already exist but were never classified —
+    typed onto a list once and left in `unknown`. A knowledge file that names
+    the department is exactly the moment to place them. An article that already
+    has a department is never touched: what the user or an earlier import
+    decided outranks a recipe's opinion.
+    """
+    for ingredient in dish.ingredients:
+        existing = store.data.articles.get(ingredient.article)
+        if existing is not None and existing.department != UNKNOWN_DEPARTMENT:
+            continue
+        department = store.department(ingredient.department)
+        if existing is not None and department is None:
+            continue
+        article = existing or Article(name=ingredient.article)
+        article.department = ingredient.department if department else UNKNOWN_DEPARTMENT
+        article.kind = department.kind if department else None
+        article.department_source = DepartmentSource.RULE
+        article.shelf_life = department.shelf_life if department else ShelfLife.IGNORE
+        store.data.articles[article.name] = article
 
 
 def export_knowledge(store: MealPlanStore, today: date) -> dict[str, Any]:

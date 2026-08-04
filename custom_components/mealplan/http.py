@@ -31,29 +31,48 @@ STYLE = """
 * { box-sizing: border-box; }
 body {
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  margin: 0; padding: 14mm 12mm; color: #111; background: #fff;
+  margin: 0; padding: 16px; color: #111; background: #fff;
+  -webkit-text-size-adjust: 100%;
 }
-header { display: flex; justify-content: space-between; align-items: baseline;
-  border-bottom: 1.5px solid #111; padding-bottom: 4px; margin-bottom: 8px; }
-h1 { font-size: 15pt; margin: 0; letter-spacing: .02em; }
-.meta { font-size: 9pt; color: #555; }
-.columns { column-count: 2; column-gap: 10mm; column-fill: balance; }
-section { break-inside: avoid-column; margin: 0 0 5mm; }
-h2 { font-size: 9.5pt; text-transform: uppercase; letter-spacing: .08em;
-  margin: 0 0 2px; padding-bottom: 1px; border-bottom: .5px solid #bbb; color: #333; }
+/* Stacked by default: on a phone the title and the meta line do not share a row. */
+header { border-bottom: 1.5px solid #111; padding-bottom: 5px; margin-bottom: 10px; }
+h1 { font-size: 19px; margin: 0; letter-spacing: .01em; overflow-wrap: anywhere; }
+.meta { display: block; font-size: 12px; color: #555; margin-top: 2px; }
+/* One column by default so a phone can read it; two only where there is room. */
+.columns { column-count: 1; }
+section { break-inside: avoid-column; margin: 0 0 14px; }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em;
+  margin: 0 0 3px; padding-bottom: 2px; border-bottom: 1px solid #bbb; color: #333; }
 ul { list-style: none; margin: 0; padding: 0; }
-li { font-size: 11pt; line-height: 1.55; display: flex; gap: 6px; align-items: baseline;
+li { font-size: 15px; line-height: 1.6; display: flex; gap: 8px; align-items: baseline;
   break-inside: avoid; }
-.box { flex: 0 0 auto; width: 3.2mm; height: 3.2mm; border: .8px solid #333;
-  border-radius: 1px; display: inline-block; position: relative; top: .3mm; }
-.tag { font-size: 8pt; color: #666; border: .5px solid #bbb; border-radius: 3px;
-  padding: 0 3px; margin-left: 3px; }
-.note { font-size: 8.5pt; color: #666; }
-.empty { font-size: 11pt; color: #777; font-style: italic; }
-footer { margin-top: 6mm; font-size: 8pt; color: #888; }
+li > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.box { flex: 0 0 auto; width: 12px; height: 12px; border: 1px solid #333;
+  border-radius: 2px; display: inline-block; position: relative; top: 1px; }
+.tag { font-size: 11px; color: #666; border: 1px solid #bbb; border-radius: 3px;
+  padding: 0 4px; margin-left: 4px; white-space: nowrap; }
+.note { font-size: 12px; color: #666; }
+.empty { font-size: 15px; color: #777; font-style: italic; }
+footer { margin-top: 20px; font-size: 11px; color: #888; }
+
+@media screen and (min-width: 700px) {
+  body { padding: 28px 32px; }
+  .columns { column-count: 2; column-gap: 40px; column-fill: balance; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+  .meta { margin-top: 0; }
+}
+
 @media print {
   body { padding: 10mm; }
-  footer { position: fixed; bottom: 6mm; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+  h1 { font-size: 15pt; }
+  .meta { font-size: 9pt; margin-top: 0; }
+  h2 { font-size: 9.5pt; }
+  li { font-size: 11pt; line-height: 1.55; }
+  .box { width: 3.2mm; height: 3.2mm; border-width: .8px; }
+  section { margin: 0 0 5mm; }
+  .columns { column-count: 2; column-gap: 10mm; column-fill: balance; }
+  footer { margin-top: 6mm; font-size: 8pt; }
   @page { size: A4 portrait; margin: 0; }
 }
 """

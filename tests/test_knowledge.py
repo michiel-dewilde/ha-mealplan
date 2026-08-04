@@ -94,3 +94,56 @@ async def test_free_text_survives_the_round_trip(
     assert "Corner Market" in exported["stores"]
     assert next(d for d in exported["departments"] if d["key"] == "produce")["labels"]["nl"] == ("Groenten & fruit")
     assert next(a for a in exported["articles"] if a["name"] == "poultry rub")["availability"] == "Big Barn"
+
+
+async def test_import_adopts_ingredients_that_are_not_listed_as_articles(
+    hass: HomeAssistant, entry: MockConfigEntry, knowledge: dict[str, Any]
+):
+    """A recipe can name something the shopping list never has under that name.
+
+    Without adopting those, the ingredient lands in `unknown` at the bottom of
+    the list even though the file said exactly which department it belongs to.
+    """
+    knowledge["dishes"][0]["ingredients"].append(
+        {"article": "lime", "certainty": "certain", "source": "recipe_list", "department": "produce"}
+    )
+    await call(hass, "import_knowledge", {"knowledge": knowledge})
+
+    store = entry.runtime_data.store
+    assert store.article("lime") is not None
+    assert store.article("lime").department == "produce"
+    assert store.article_kind("lime") == "fresh"
+
+    result = await call(hass, "add_dish", {"dish": "tacos"})
+    assert "lime" in result["added"], "and it is placed, not dumped at the bottom"
+
+
+async def test_unclassified_items_get_a_readable_heading(hass: HomeAssistant, entry: MockConfigEntry):
+    """A heading of UNKNOWN reads like a fault. It is just everything else."""
+    store = entry.runtime_data.store
+    assert store.department_label("unknown", "en") == "Anything else"
+    assert store.department_label("unknown", "nl") == "Nog iets"
+
+
+async def test_import_places_articles_that_were_typed_before_they_were_known(
+    hass: HomeAssistant, entry: MockConfigEntry, knowledge: dict[str, Any]
+):
+    """Something typed onto a list once sits in `unknown` until someone says otherwise.
+
+    A knowledge file naming its department is exactly that moment. Anything
+    already classified is left alone: a decision already made outranks a
+    recipe's opinion.
+    """
+    store = entry.runtime_data.store
+    await call(hass, "running_low", {"article": "lime"})
+    assert store.article("lime").department == "unknown"
+
+    await call(hass, "learn_article", {"article": "salt", "department": "dry_goods"})
+    knowledge["dishes"][0]["ingredients"] += [
+        {"article": "lime", "certainty": "certain", "source": "recipe_list", "department": "produce"},
+        {"article": "salt", "certainty": "certain", "source": "recipe_list", "department": "preserves"},
+    ]
+    await call(hass, "import_knowledge", {"knowledge": knowledge})
+
+    assert store.article("lime").department == "produce", "the unclassified one is placed"
+    assert store.article("salt").department == "dry_goods", "the classified one is left alone"

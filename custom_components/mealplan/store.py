@@ -46,6 +46,9 @@ SAVE_DELAY = 5
 MIN_LIVE_LISTINGS = 3
 """Below this, the seeded cadence is the better estimate than what we have measured."""
 
+UNKNOWN_LABELS = {"en": "Anything else", "nl": "Nog iets"}
+"""What to call the bucket unclassified items land in. Not an error message."""
+
 
 def _parse_date(value: Any) -> date | None:
     """Parse an ISO date from storage, tolerating null and rubbish."""
@@ -152,7 +155,14 @@ class MealPlanStore:
         return [d.key for d in self.data.departments]
 
     def department_label(self, key: str, language: str) -> str:
-        """Return the display label for a department key."""
+        """Return the display label for a department key.
+
+        `unknown` is not a department and is deliberately absent from the list,
+        but it does become a heading on screen and on paper — where "UNKNOWN"
+        reads like a fault rather than the perfectly ordinary "everything else".
+        """
+        if key == UNKNOWN_DEPARTMENT:
+            return UNKNOWN_LABELS.get(language, UNKNOWN_LABELS["en"])
         department = self.department(key)
         return department.label(language) if department else key
 

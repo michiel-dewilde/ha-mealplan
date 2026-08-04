@@ -215,7 +215,12 @@ async def test_scenario_4_no_expiry_is_asked_at_the_till(hass: HomeAssistant, se
 
 
 async def test_scenario_5_printable_list(hass: HomeAssistant, seeded: MockConfigEntry):
-    """One A4, two columns, department headings, a box per item."""
+    """One A4, two columns, department headings, a box per item.
+
+    The same page has to survive being opened on a phone on the way to the
+    printer, so the two columns are a property of paper and of wide screens —
+    never of a 390-pixel one, where they would put half the list off-screen.
+    """
     for article in ("tomatoes", "minced beef", "rice"):
         await call(hass, "running_low", {"article": article})
     await call(hass, "sort_list", {"store": "Corner Market"})
@@ -223,11 +228,16 @@ async def test_scenario_5_printable_list(hass: HomeAssistant, seeded: MockConfig
     printed = await call(hass, "print_list")
     html = printed["html"]
 
-    assert "column-count: 2" in html
     assert html.index("Groenten &amp; fruit") < html.index("Beenhouwerij") < html.index("Droge voeding")
     assert html.count("class='box'") == 3
-    assert "@media print" in html
     assert printed["url"].endswith(seeded.entry_id)
+
+    style = html[html.index("<style>") : html.index("</style>")]
+    assert ".columns { column-count: 1; }" in style, "narrow screens get one readable column"
+    assert style.count("column-count: 2") == 2, "two columns on paper and on a wide screen"
+    assert "@media print" in style
+    assert "@media screen and (min-width: 700px)" in style
+    assert "mm" not in style.split("@media print")[0], "no paper units outside the print rules"
 
 
 async def test_scenario_5_everything_except_the_sausages(hass: HomeAssistant, seeded: MockConfigEntry):
@@ -270,19 +280,32 @@ async def test_scenario_6_seven_days_with_notes(hass: HomeAssistant, seeded: Moc
 
 
 async def test_scenario_6_day_note_never_reaches_a_calendar(hass: HomeAssistant, seeded: MockConfigEntry):
-    """The note belongs to the plan. Our own calendar publishes the dish, not the note."""
-    await call(hass, "plan_menu", {"date": "2026-08-13", "note": "eating later, training"})
+    """The note belongs to the plan. Our own calendar publishes the dish, not the note.
+
+    Checked with a dish *and* a note on the same day: a note-only day produces
+    no event at all, which would make this pass for the wrong reason.
+    """
+    await call(hass, "plan_menu", {"date": "2026-08-13", "dish": "tacos", "note": "eating later, training"})
     await hass.async_block_till_done()
 
-    events = await hass.services.async_call(
-        "calendar",
-        "get_events",
-        {"start_date_time": "2026-08-13 00:00:00", "end_date_time": "2026-08-14 00:00:00"},
-        target={"entity_id": "calendar.meal_plan_meal_plan"},
-        blocking=True,
-        return_response=True,
-    )
-    assert events["calendar.meal_plan_meal_plan"]["events"] == []
+    async def events_on(day: str) -> list[dict[str, str]]:
+        response = await hass.services.async_call(
+            "calendar",
+            "get_events",
+            {"start_date_time": f"{day} 00:00:00", "end_date_time": f"{day} 23:59:00"},
+            target={"entity_id": "calendar.meal_plan_meal_plan"},
+            blocking=True,
+            return_response=True,
+        )
+        return response["calendar.meal_plan_meal_plan"]["events"]
+
+    published = await events_on("2026-08-13")
+    assert [event["summary"] for event in published] == ["tacos"]
+    assert all("description" not in event for event in published), "the note is not published"
+
+    # A day carrying only a note produces no event whatsoever.
+    await call(hass, "plan_menu", {"date": "2026-08-12", "note": "eating later, training"})
+    assert await events_on("2026-08-12") == []
 
 
 async def test_scenario_6_one_tap_from_menu_to_list(hass: HomeAssistant, seeded: MockConfigEntry):
@@ -394,3 +417,29 @@ async def test_scenario_11_from_stock_to_dish(hass: HomeAssistant, seeded: MockC
     assert top["dish"] == "tacos"
     reason = next(r for r in top["reasons"] if r.startswith("expiring:"))
     assert "minced beef" in reason
+
+
+async def test_scenario_9_seeded_articles_without_history_are_still_offered(
+    hass: HomeAssistant, seeded: MockConfigEntry
+):
+    """A seeded article knows its cadence but not when it last came round.
+
+    Returning nothing until the integration has watched for weeks would make
+    the question useless on a fresh system, so staples show up as `no_history`
+    until there is something real to measure.
+    """
+    result = await call(hass, "get_pantry_check", {"scope": "general"})
+    reasons = {row["article"]: row["reason"] for row in result["articles"]}
+
+    assert reasons == {"rice": "no_history"}, "the staple, honestly labelled"
+    assert "poultry rub" not in reasons, "not a staple, so not worth nagging about"
+
+
+async def test_scenario_9_measured_cadence_replaces_the_guess(hass: HomeAssistant, seeded: MockConfigEntry):
+    store = store_of(seeded)
+    store.record_listing("rice", THURSDAY - timedelta(days=40))
+
+    result = await call(hass, "get_pantry_check", {"scope": "general"})
+    rice = next(row for row in result["articles"] if row["article"] == "rice")
+    assert rice["reason"] == "cadence"
+    assert rice["last_listed"] == (THURSDAY - timedelta(days=40)).isoformat()
