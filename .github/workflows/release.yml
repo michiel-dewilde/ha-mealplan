@@ -1,0 +1,52 @@
+# Packs the integration for HACS.
+#
+# `hacs.json` says `zip_release`, which means HACS downloads one asset from the
+# release instead of the whole source tree. Without this workflow that asset
+# does not exist and installing through HACS simply fails — so the two have to
+# stay together.
+#
+# The zip contains the contents of `custom_components/mealplan`, not the folder
+# itself: that is the layout HACS unpacks into the user's config directory. The
+# dashboard cards under `www/` are part of it, and they are the reason nobody
+# has to add a Lovelace resource by hand.
+#
+# It only runs when a release is published. Publishing stays a deliberate act.
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  zip:
+    name: Attach mealplan.zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The manifest version is what Home Assistant shows and what HACS
+      # compares against. A tag that disagrees with it turns "up to date" into
+      # a lie, so it is a build failure rather than a warning.
+      - name: Check the manifest version matches the tag
+        run: |
+          manifest=$(python -c "import json;print(json.load(open('custom_components/mealplan/manifest.json'))['version'])")
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$manifest" != "$tag" ]; then
+            echo "manifest.json says $manifest, the tag says $tag" >&2
+            exit 1
+          fi
+          echo "version $manifest"
+
+      - name: Build the zip
+        run: |
+          cd custom_components/mealplan
+          zip -r --exclude='*__pycache__*' ../../mealplan.zip .
+          unzip -l ../../mealplan.zip
+
+      - name: Attach it to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: mealplan.zip

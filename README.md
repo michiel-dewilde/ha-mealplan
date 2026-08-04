@@ -121,7 +121,12 @@ Through [HACS](https://hacs.xyz) as a custom repository:
 1. Install *Meal Plan*, restart Home Assistant
 1. *Settings → Devices & services → Add integration → Meal Plan*
 
-Requires Home Assistant 2026.7.0 or newer.
+The dashboard cards come with it. There is no Lovelace resource to add.
+
+Requires Home Assistant 2026.7.0 or newer. HACS installs a release asset, which
+is built and attached by the release workflow; a version with no release yet
+can be installed by copying `custom_components/mealplan` into your `config`
+directory and restarting.
 
 ## Configuration
 
