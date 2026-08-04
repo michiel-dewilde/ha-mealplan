@@ -23,7 +23,7 @@ from homeassistant.util.json import JsonObjectType
 import voluptuous as vol
 
 from . import api
-from .const import DOMAIN, PantryScope, When
+from .const import DOMAIN, ListName, PantryScope, When
 from .knowledge import export_knowledge
 from .options import plan_options
 from .types import MealPlanConfigEntry
@@ -90,6 +90,21 @@ def _tools(entry: MealPlanConfigEntry) -> list[llm.Tool]:
             "pantry ingredients.",
             {},
             lambda ctx, args: api.list_dishes(ctx),
+        ),
+        tool(
+            "get_list",
+            "Read one of the three lists — 'shopping' for this trip, 'later' for the next "
+            "one, 'stock' for what is in the house — grouped under department headings in "
+            "the walking order of the selected store.",
+            {
+                vol.Optional("list"): vol.In([str(name) for name in ListName]),
+                vol.Optional("include_completed"): bool,
+            },
+            lambda ctx, args: api.get_list(
+                ctx,
+                ListName(args.get("list", ListName.SHOPPING)),
+                include_completed=args.get("include_completed", False),
+            ),
         ),
         tool(
             "get_pantry_check",

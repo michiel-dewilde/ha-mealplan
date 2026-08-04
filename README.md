@@ -34,6 +34,7 @@ implementation.
 | `mealplan.plan_menu` | A dish on a date, with an optional free-text note and number of people. |
 | `mealplan.complete_all` | Complete everything, optionally `except_items` — "got everything except the sausages". |
 | `mealplan.sort_list` | Reorder the open items into the department order of the selected store. |
+| `mealplan.set_store_order` | Record a store's walking route. Meant to be corrected in the aisle; the open list is re-sorted straight away. |
 | `mealplan.set_expiry` | Record an expiry date for an article. |
 | `mealplan.learn_dish` | Teach it a new dish and its ingredients. |
 | `mealplan.import_knowledge` / `export_knowledge` | Seed from a knowledge file / hand the current knowledge back. |
@@ -43,10 +44,44 @@ implementation.
 | Service | What it does |
 | --- | --- |
 | `mealplan.get_week` | A week's menu, with the calendar entries and day notes per day. |
+| `mealplan.get_list` | One list, grouped under department headings in walking order. |
 | `mealplan.list_dishes` | Every dish with its frequency, last served, usual weekday and ingredients. |
 | `mealplan.get_pantry_check` | What to check: `general` (pantry articles due by their cadence) or `menu` (pantry articles of the planned dishes). |
 | `mealplan.get_expiring` | What expires within N days. |
 | `mealplan.suggest_menu` | Suggests **dishes** — from frequency, last served, the usual weekday, and what is about to expire. |
+
+### Dashboard cards
+
+Four cards ship with the integration and register themselves — there is nothing
+to add to the Lovelace resource list, and nothing to reinstall when the
+integration updates. They find the summary sensor on their own, so none of them
+needs an `entity:`, and a config of `type: custom:mealplan-menu-card` is
+complete.
+
+| Card | What it is for |
+| --- | --- |
+| `custom:mealplan-menu-card` | The menu. Seven days, what your calendars say next to each, and a dish two taps away. |
+| `custom:mealplan-list-card` | A list with department headings, in the walking order of the store. `list: shopping` (default), `later` or `stock`. |
+| `custom:mealplan-round-card` | The rounds. `mode: fridge` notes what is in the house and when it goes off; `mode: pantry` walks the cupboard articles that are due. |
+| `custom:mealplan-route-card` | The walking route, corrected standing in the shop. Also picks the store. |
+
+```yaml
+views:
+  - title: Menu
+    cards:
+      - type: custom:mealplan-menu-card
+  - title: List
+    cards:
+      - type: custom:mealplan-list-card
+      - type: custom:mealplan-list-card
+        list: later
+        actions: false
+```
+
+They are plain custom elements, not Lit: no build step, and nothing that
+reaches into the frontend's own module graph. Every card reads the summary
+sensor's attributes and writes through the services above, so anything a card
+can do you can also do from an automation, from Assist, or over MCP.
 
 ## Design decisions worth knowing
 

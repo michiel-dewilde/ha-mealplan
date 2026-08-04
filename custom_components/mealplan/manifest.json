@@ -1,7 +1,7 @@
 {
   "domain": "mealplan",
   "name": "Meal Plan",
-  "after_dependencies": ["calendar", "conversation"],
+  "after_dependencies": ["calendar", "conversation", "frontend"],
   "codeowners": ["@michiel-dewilde"],
   "config_flow": true,
   "dependencies": ["http"],

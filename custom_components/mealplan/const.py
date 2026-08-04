@@ -148,7 +148,10 @@ SERVICE_PRINT_LIST: Final = "print_list"
 SERVICE_IMPORT_KNOWLEDGE: Final = "import_knowledge"
 SERVICE_EXPORT_KNOWLEDGE: Final = "export_knowledge"
 
+SERVICE_SET_STORE_ORDER: Final = "set_store_order"
+
 SERVICE_GET_WEEK: Final = "get_week"
+SERVICE_GET_LIST: Final = "get_list"
 SERVICE_LIST_DISHES: Final = "list_dishes"
 SERVICE_GET_PANTRY_CHECK: Final = "get_pantry_check"
 SERVICE_GET_EXPIRING: Final = "get_expiring"
@@ -159,14 +162,17 @@ ATTR_ARTICLE: Final = "article"
 ATTR_ARTICLES: Final = "articles"
 ATTR_DATE: Final = "date"
 ATTR_DAYS: Final = "days"
+ATTR_DEPARTMENTS: Final = "departments"
 ATTR_DISH: Final = "dish"
 ATTR_ENTRY_ID: Final = "entry_id"
 ATTR_EXCEPT_ITEMS: Final = "except_items"
 ATTR_EXPIRY: Final = "expiry"
 ATTR_INCLUDE_PANTRY: Final = "include_pantry"
+ATTR_INCLUDE_COMPLETED: Final = "include_completed"
 ATTR_INGREDIENTS: Final = "ingredients"
 ATTR_KNOWLEDGE: Final = "knowledge"
 ATTR_LIMIT: Final = "limit"
+ATTR_LIST: Final = "list"
 ATTR_NOTE: Final = "note"
 ATTR_PEOPLE: Final = "people"
 ATTR_SCOPE: Final = "scope"
@@ -180,6 +186,13 @@ SIGNAL_UPDATED: Final = f"{DOMAIN}_updated"
 
 # HTTP
 PRINT_URL: Final = f"/api/{DOMAIN}/print"
+
+# The dashboard cards. One file, served straight from the integration and
+# registered as an extra module, so there is no build step and nothing to add
+# to the Lovelace resource list by hand.
+CARDS_DIR: Final = "www"
+CARDS_FILE: Final = "mealplan-cards.js"
+CARDS_URL: Final = f"/{DOMAIN}-static"
 
 # Number of days an expiry counts as "urgent" on the dashboard.
 URGENT_EXPIRY_DAYS: Final = 2

@@ -13,6 +13,7 @@ from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -83,6 +84,8 @@ class MealPlanSensor(MealPlanEntity, SensorEntity):
         next_expiry = expiring[0].due if expiring else None
 
         return {
+            "entry_id": self._entry.entry_id,
+            "entities": self._entity_ids(),
             "store": chosen_store,
             "window_start": window.start.isoformat(),
             "window_end": window.end.isoformat(),
@@ -127,4 +130,20 @@ class MealPlanSensor(MealPlanEntity, SensorEntity):
             ),
             "learn_suggestions": store.learn_suggestions(),
             "dishes": sorted(store.data.dishes),
+        }
+
+    def _entity_ids(self) -> dict[str, str]:
+        """Return this meal plan's other entities, keyed by role.
+
+        The cards need to tick an item off a to-do list, and entity ids are
+        localised — `todo.weekplanning_boodschappen` here, `todo.meal_plan_shopping`
+        on an English install. Guessing the name is how a card breaks in someone
+        else's house; the registry knows.
+        """
+        registry = er.async_get(self.hass)
+        prefix = f"{self._entry.entry_id}_"
+        return {
+            entry.unique_id.removeprefix(prefix): entry.entity_id
+            for entry in er.async_entries_for_config_entry(registry, self._entry.entry_id)
+            if entry.unique_id.startswith(prefix)
         }

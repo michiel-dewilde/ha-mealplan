@@ -84,6 +84,13 @@
         "menu": "For the planned menu"
       }
     },
+    "list_name": {
+      "options": {
+        "shopping": "Shopping list",
+        "later": "Next trip",
+        "stock": "In the house"
+      }
+    },
     "shelf_life": {
       "options": {
         "important": "Important — track from the moment it is bought",
@@ -137,6 +144,15 @@
       "description": "Reorders the open items into the walking route of a store.",
       "fields": {
         "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "store": { "name": "Store", "description": "Defaults to the selected store." }
+      }
+    },
+    "set_store_order": {
+      "name": "Set the walking route",
+      "description": "Records the order the departments come in at a store. Meant to be corrected in the aisle, not at a desk: the open list is re-sorted straight away.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "departments": { "name": "Departments", "description": "Department keys, in walking order. Any left out keep their order at the end." },
         "store": { "name": "Store", "description": "Defaults to the selected store." }
       }
     },
@@ -222,6 +238,15 @@
         "start": { "name": "Start", "description": "Defaults to the current planning window." }
       }
     },
+    "get_list": {
+      "name": "Read a list",
+      "description": "Returns one list grouped under department headings, in the walking order of the selected store.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "list": { "name": "List", "description": "This trip, the next trip, or what is in the house." },
+        "include_completed": { "name": "Include completed", "description": "Include the items already ticked off." }
+      }
+    },
     "list_dishes": {
       "name": "List dishes",
       "description": "Returns every dish with its frequency, last served, usual weekday and ingredients.",
@@ -261,6 +286,7 @@
     "unknown_department": { "message": "There is no department called “{department}”." },
     "unknown_entry": { "message": "There is no meal plan with id {entry_id}." },
     "no_meal_plan": { "message": "No meal plan is set up." },
+    "no_store": { "message": "No store is selected, so there is nothing to record a walking route for." },
     "ambiguous_meal_plan": { "message": "There is more than one meal plan. Say which one." },
     "undated_stock_disabled": { "message": "Stock items without an expiry date are switched off for this meal plan." },
     "unsupported_schema": { "message": "This knowledge file uses schema {schema}; this version reads {expected}." }

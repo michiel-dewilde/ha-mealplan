@@ -10,13 +10,17 @@ nothing about the rest.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.setup import async_when_setup
 
-from .const import DOMAIN
+from .const import CARDS_DIR, CARDS_FILE, CARDS_URL, DOMAIN
 from .http import MealPlanPrintView
 from .llm import async_register_api
 from .services import async_setup_services
@@ -39,9 +43,35 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     # Headless setups (and most tests) never start the HTTP component.
     if (http := getattr(hass, "http", None)) is not None:
         http.register_view(MealPlanPrintView())
+        await _async_register_cards(hass, http)
     else:
         _LOGGER.debug("HTTP component unavailable; the printable list will not be served")
     return True
+
+
+async def _async_register_cards(hass: HomeAssistant, http: object) -> None:
+    """Serve the dashboard cards and load them into the frontend.
+
+    Registered here rather than left to the user's Lovelace resource list: a
+    card that has to be installed by hand is a card that is out of date the
+    first time the integration is updated.
+    """
+    cards = Path(__file__).parent / CARDS_DIR
+    if not (cards / CARDS_FILE).exists():
+        _LOGGER.debug("No card bundle at %s; the dashboard cards will not be available", cards)
+        return
+    await http.async_register_static_paths(  # type: ignore[attr-defined]
+        [StaticPathConfig(CARDS_URL, str(cards), cache_headers=False)]
+    )
+
+    async def _load_cards(hass: HomeAssistant, component: str) -> None:
+        """Add the bundle to the frontend once there is a frontend to add it to."""
+        del component
+        add_extra_js_url(hass, f"{CARDS_URL}/{CARDS_FILE}")
+
+    # Serving the file needs only `http`; loading it needs `frontend`, which
+    # may not be up yet — and in a test harness never comes up at all.
+    async_when_setup(hass, "frontend", _load_cards)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: MealPlanConfigEntry) -> bool:

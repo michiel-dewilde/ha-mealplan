@@ -19,14 +19,17 @@ from .const import (
     ATTR_ARTICLE,
     ATTR_DATE,
     ATTR_DAYS,
+    ATTR_DEPARTMENTS,
     ATTR_DISH,
     ATTR_ENTRY_ID,
     ATTR_EXCEPT_ITEMS,
     ATTR_EXPIRY,
+    ATTR_INCLUDE_COMPLETED,
     ATTR_INCLUDE_PANTRY,
     ATTR_INGREDIENTS,
     ATTR_KNOWLEDGE,
     ATTR_LIMIT,
+    ATTR_LIST,
     ATTR_NOTE,
     ATTR_PEOPLE,
     ATTR_SCOPE,
@@ -39,6 +42,7 @@ from .const import (
     SERVICE_COMPLETE_ALL,
     SERVICE_EXPORT_KNOWLEDGE,
     SERVICE_GET_EXPIRING,
+    SERVICE_GET_LIST,
     SERVICE_GET_PANTRY_CHECK,
     SERVICE_GET_WEEK,
     SERVICE_IMPORT_KNOWLEDGE,
@@ -48,9 +52,11 @@ from .const import (
     SERVICE_PRINT_LIST,
     SERVICE_RUNNING_LOW,
     SERVICE_SET_EXPIRY,
+    SERVICE_SET_STORE_ORDER,
     SERVICE_SORT_LIST,
     SERVICE_SUGGEST_MENU,
     WEEKDAYS,
+    ListName,
     PantryScope,
     ShelfLife,
     When,
@@ -206,6 +212,22 @@ def async_setup_services(hass: HomeAssistant) -> None:
         supports_response=SupportsResponse.OPTIONAL,
     )
 
+    async def handle_set_store_order(call: ServiceCall) -> ServiceResponse:
+        return api.set_store_order(_ctx(hass, call), call.data[ATTR_DEPARTMENTS], call.data.get(ATTR_STORE))
+
+    register(
+        DOMAIN,
+        SERVICE_SET_STORE_ORDER,
+        handle_set_store_order,
+        schema=_schema(
+            {
+                vol.Required(ATTR_DEPARTMENTS): vol.All(cv.ensure_list, [cv.string]),
+                vol.Optional(ATTR_STORE): cv.string,
+            }
+        ),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
     async def handle_set_expiry(call: ServiceCall) -> ServiceResponse:
         return api.set_expiry(_ctx(hass, call), call.data[ATTR_ARTICLE], call.data[ATTR_EXPIRY])
 
@@ -351,6 +373,26 @@ def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_GET_WEEK,
         handle_get_week,
         schema=_schema({vol.Optional(ATTR_START): cv.date}),
+        supports_response=SupportsResponse.ONLY,
+    )
+
+    async def handle_get_list(call: ServiceCall) -> ServiceResponse:
+        return api.get_list(
+            _ctx(hass, call),
+            ListName(call.data.get(ATTR_LIST, ListName.SHOPPING)),
+            include_completed=call.data.get(ATTR_INCLUDE_COMPLETED, False),
+        )
+
+    register(
+        DOMAIN,
+        SERVICE_GET_LIST,
+        handle_get_list,
+        schema=_schema(
+            {
+                vol.Optional(ATTR_LIST, default=str(ListName.SHOPPING)): vol.In([str(name) for name in ListName]),
+                vol.Optional(ATTR_INCLUDE_COMPLETED): cv.boolean,
+            }
+        ),
         supports_response=SupportsResponse.ONLY,
     )
 

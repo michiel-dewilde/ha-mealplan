@@ -85,6 +85,20 @@ sort_list:
       selector:
         text:
 
+set_store_order:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    departments:
+      required: true
+      selector:
+        object:
+    store:
+      selector:
+        text:
+
 set_expiry:
   fields:
     entry_id:
@@ -228,6 +242,25 @@ get_week:
     start:
       selector:
         date:
+
+get_list:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    list:
+      default: shopping
+      selector:
+        select:
+          translation_key: list_name
+          options:
+            - shopping
+            - later
+            - stock
+    include_completed:
+      selector:
+        boolean:
 
 list_dishes:
   fields:

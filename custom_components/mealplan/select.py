@@ -10,11 +10,11 @@ from __future__ import annotations
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import SIGNAL_UPDATED
+from .const import SIGNAL_UPDATED, ListName
 from .entity import MealPlanEntity
 from .types import MealPlanConfigEntry
 
@@ -67,7 +67,18 @@ class StoreSelect(MealPlanEntity, SelectEntity, RestoreEntity):
         return options[0] if len(options) == 1 else None
 
     async def async_select_option(self, option: str) -> None:
-        """Pick a store."""
+        """Pick a store, and put the list in that store's order.
+
+        Re-sorting here rather than waiting to be asked: picking the shop is
+        the whole reason this selector exists, and a list still in the previous
+        shop's walking route is worse than no order at all.
+        """
         self._selected = option
         self._entry.runtime_data.store_choice = option
+        self._store.sort_list(ListName.SHOPPING, option)
+        self._store.sort_list(ListName.LATER, option)
+        self._store.async_schedule_save()
         self.async_write_ha_state()
+        # The summary sensor publishes the walking route the cards draw their
+        # headings from. Without this it keeps showing the old store's.
+        async_dispatcher_send(self.hass, SIGNAL_UPDATED)

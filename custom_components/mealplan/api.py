@@ -224,6 +224,44 @@ def sort_list(ctx: Context, store_name: str | None = None) -> dict[str, Any]:
     return {"store": chosen, "order": store.store_order(chosen)}
 
 
+def set_store_order(ctx: Context, departments: list[str], store_name: str | None = None) -> dict[str, Any]:
+    """Record the walking route of a store.
+
+    Written to be used standing in an aisle, not at a desk: the order that is
+    wrong is wrong *now*, and waiting until you are home means it never gets
+    fixed. So the open list is re-sorted immediately when the store you correct
+    is the one you are in.
+
+    Departments left out keep their relative order at the end, which makes
+    "move this one up" a complete instruction rather than a full permutation.
+    """
+    name = store_name or ctx.selected_store
+    if not name:
+        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="no_store")
+
+    known = ctx.store.department_keys
+    if unknown := [key for key in departments if key not in known]:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="unknown_department",
+            translation_placeholders={"department": ", ".join(unknown)},
+        )
+
+    order = list(dict.fromkeys(departments))
+    order += [key for key in known if key not in order]
+
+    existing = ctx.store.data.stores.get(name, StoreOrder())
+    existing.department_order = order
+    existing.source = StoreSource.MANUAL
+    ctx.store.data.stores[name] = existing
+
+    if name == ctx.selected_store:
+        ctx.store.sort_list(ListName.SHOPPING, name)
+        ctx.store.sort_list(ListName.LATER, name)
+    ctx.commit()
+    return {"store": name, "department_order": order}
+
+
 def set_expiry(ctx: Context, article: str, expiry: date) -> dict[str, Any]:
     """Record when something in the fridge goes off.
 
@@ -427,6 +465,61 @@ def list_dishes(ctx: Context) -> dict[str, Any]:
             }
         )
     return {"dishes": dishes}
+
+
+def get_list(
+    ctx: Context,
+    list_name: ListName = ListName.SHOPPING,
+    *,
+    include_completed: bool = False,
+) -> dict[str, Any]:
+    """Return one list, grouped under department headings in walking order.
+
+    The to-do entity can only hand out flat items with a summary and a
+    description, which is exactly what made the paper list better than every
+    app that came before it: the paper had headings. This is the same list the
+    printable page renders, in the same order, so screen and paper never
+    disagree.
+    """
+    store = ctx.store
+    items = store.items(list_name) if include_completed else store.open_items(list_name)
+
+    grouped: dict[str, list[Any]] = {}
+    for item in items:
+        grouped.setdefault(item.department, []).append(item)
+
+    order = [key for key in store.store_order(ctx.selected_store) if key in grouped]
+    order += [key for key in grouped if key not in order]
+
+    return {
+        "list": str(list_name),
+        "store": ctx.selected_store,
+        "open": len(store.open_items(list_name)),
+        "completed": sum(1 for item in store.items(list_name) if item.completed),
+        "groups": [
+            {
+                "department": key,
+                "label": store.department_label(key, ctx.language),
+                "items": [
+                    {
+                        "uid": item.uid,
+                        "summary": item.summary,
+                        "note": item.note,
+                        "availability": item.availability,
+                        "due": item.due.isoformat() if item.due else None,
+                        "days_left": (item.due - ctx.today).days if item.due else None,
+                        "added_on": item.added_on.isoformat() if item.added_on else None,
+                        "days_ago": (ctx.today - item.added_on).days if item.added_on else None,
+                        "dish": item.dish,
+                        "article": item.article,
+                        "completed": item.completed,
+                    }
+                    for item in grouped[key]
+                ],
+            }
+            for key in order
+        ],
+    }
 
 
 def get_pantry_check(ctx: Context, scope: PantryScope = PantryScope.GENERAL) -> dict[str, Any]:

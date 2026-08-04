@@ -84,6 +84,13 @@
         "menu": "Voor het geplande menu"
       }
     },
+    "list_name": {
+      "options": {
+        "shopping": "Boodschappen",
+        "later": "Volgende beurt",
+        "stock": "In huis"
+      }
+    },
     "shelf_life": {
       "options": {
         "important": "Belangrijk — volg van bij het kopen",
@@ -137,6 +144,15 @@
       "description": "Zet de openstaande items in de looproute van een winkel.",
       "fields": {
         "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "store": { "name": "Winkel", "description": "Standaard de geselecteerde winkel." }
+      }
+    },
+    "set_store_order": {
+      "name": "Looproute vastleggen",
+      "description": "Legt vast in welke volgorde de afdelingen in een winkel liggen. Bedoeld om in het gangpad recht te zetten, niet aan een bureau: de openstaande lijst wordt meteen mee gesorteerd.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "departments": { "name": "Afdelingen", "description": "Afdelingssleutels, in looproute. Wat je weglaat houdt zijn onderlinge volgorde achteraan." },
         "store": { "name": "Winkel", "description": "Standaard de geselecteerde winkel." }
       }
     },
@@ -222,6 +238,15 @@
         "start": { "name": "Begin", "description": "Standaard het lopende planningsvenster." }
       }
     },
+    "get_list": {
+      "name": "Lijst opvragen",
+      "description": "Geeft één lijst terug, gegroepeerd onder afdelingskoppen, in de looproute van de geselecteerde winkel.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "list": { "name": "Lijst", "description": "Deze beurt, de volgende beurt, of wat er in huis is." },
+        "include_completed": { "name": "Met afgevinkte", "description": "Ook wat al afgevinkt is." }
+      }
+    },
     "list_dishes": {
       "name": "Gerechten opsommen",
       "description": "Geeft alle gerechten terug met frequentie, laatst gegeten, vaste weekdag en ingrediënten.",
@@ -261,6 +286,7 @@
     "unknown_department": { "message": "Er is geen afdeling “{department}”." },
     "unknown_entry": { "message": "Er is geen weekplanning met id {entry_id}." },
     "no_meal_plan": { "message": "Er is geen weekplanning ingesteld." },
+    "no_store": { "message": "Er is geen winkel gekozen, dus er valt geen looproute vast te leggen." },
     "ambiguous_meal_plan": { "message": "Er is meer dan één weekplanning. Zeg welke." },
     "undated_stock_disabled": { "message": "Voorraaditems zonder vervaldatum staan uit voor deze weekplanning." },
     "unsupported_schema": { "message": "Dit kennisbestand gebruikt schema {schema}; deze versie leest {expected}." }
