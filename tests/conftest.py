@@ -68,7 +68,7 @@ def knowledge() -> dict[str, Any]:
     and an article that is only sold in one shop.
     """
     return {
-        "schema": "2.0",
+        "schema": "2.1",
         "generated": "2026-08-03",
         "source": {"weekly_plans": 40, "holdout_weeks": [], "recipe_list": 40},
         "departments": [
@@ -105,6 +105,7 @@ def knowledge() -> dict[str, Any]:
                 "kind": "fresh",
                 "department_source": "table",
                 "times": 13,
+                "last_listed": "2026-07-30",
                 "cadence_days": 21.0,
                 "staple": False,
                 "frozen": False,
@@ -118,6 +119,7 @@ def knowledge() -> dict[str, Any]:
                 "kind": "fresh",
                 "department_source": "table",
                 "times": 9,
+                "last_listed": "2026-07-25",
                 "cadence_days": 30.0,
                 "staple": True,
                 "frozen": False,
@@ -131,6 +133,7 @@ def knowledge() -> dict[str, Any]:
                 "kind": "pantry",
                 "department_source": "table",
                 "times": 6,
+                "last_listed": "2026-06-01",
                 "cadence_days": 35.0,
                 "staple": True,
                 "frozen": False,
@@ -144,6 +147,7 @@ def knowledge() -> dict[str, Any]:
                 "kind": "pantry",
                 "department_source": "rule",
                 "times": 2,
+                "last_listed": None,
                 "cadence_days": None,
                 "staple": False,
                 "frozen": False,

@@ -93,6 +93,9 @@ class Article:
     kind: Kind | None = None
     department_source: DepartmentSource = DepartmentSource.UNKNOWN
     times: int = 0
+    last_listed: date | None = None
+    """When this article was last on a list. Gives the cadence something to count from."""
+
     cadence_days: float | None = None
     staple: bool = False
     frozen: bool = False
@@ -111,6 +114,7 @@ class Article:
             kind=_as_enum(Kind, raw_kind, Kind.PANTRY) if raw_kind else None,
             department_source=_as_enum(DepartmentSource, data.get("department_source"), DepartmentSource.UNKNOWN),
             times=int(data.get("times") or 0),
+            last_listed=_as_date(data.get("last_listed")),
             cadence_days=float(cadence) if cadence is not None else None,
             staple=bool(data.get("staple")),
             frozen=bool(data.get("frozen")),
@@ -127,6 +131,7 @@ class Article:
             "kind": str(self.kind) if self.kind else None,
             "department_source": str(self.department_source),
             "times": self.times,
+            "last_listed": self.last_listed.isoformat() if self.last_listed else None,
             "cadence_days": self.cadence_days,
             "staple": self.staple,
             "frozen": self.frozen,

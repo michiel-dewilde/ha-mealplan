@@ -13,7 +13,7 @@ STORAGE_KEY: Final = f"{DOMAIN}.data"
 STORAGE_VERSION: Final = 1
 
 # The knowledge file schema this integration reads and writes.
-KNOWLEDGE_SCHEMA: Final = "2.0"
+KNOWLEDGE_SCHEMA: Final = "2.1"
 
 # Configuration
 CONF_CALENDARS: Final = "calendars"

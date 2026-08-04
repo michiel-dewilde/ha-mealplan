@@ -422,17 +422,37 @@ async def test_scenario_11_from_stock_to_dish(hass: HomeAssistant, seeded: MockC
 async def test_scenario_9_seeded_articles_without_history_are_still_offered(
     hass: HomeAssistant, seeded: MockConfigEntry
 ):
-    """A seeded article knows its cadence but not when it last came round.
+    """Schema 2.1 carries `last_listed`, so "is it due?" has an answer on day one.
 
-    Returning nothing until the integration has watched for weeks would make
-    the question useless on a fresh system, so staples show up as `no_history`
-    until there is something real to measure.
+    Without it the cadence has nothing to count from: knowing rice comes round
+    every five weeks says nothing if you do not know five weeks from when.
     """
     result = await call(hass, "get_pantry_check", {"scope": "general"})
     reasons = {row["article"]: row["reason"] for row in result["articles"]}
 
-    assert reasons == {"rice": "no_history"}, "the staple, honestly labelled"
-    assert "poultry rub" not in reasons, "not a staple, so not worth nagging about"
+    assert reasons == {"rice": "cadence"}
+    assert "poultry rub" not in reasons, "not a staple and not due, so not worth nagging about"
+
+    rice = next(row for row in result["articles"] if row["article"] == "rice")
+    assert rice["last_listed"] == "2026-06-01", "the seeded date, not a live one"
+
+
+async def test_scenario_9_a_staple_without_a_date_is_still_offered_honestly(
+    hass: HomeAssistant, entry: MockConfigEntry, knowledge: dict[str, Any]
+):
+    """An older file, or an article only a recipe knows, has no date to count from.
+
+    Returning nothing at all would make the question useless, so staples come
+    up labelled `no_history` until there is something real to measure.
+    """
+    for article in knowledge["articles"]:
+        article.pop("last_listed", None)
+    await call(hass, "import_knowledge", {"knowledge": knowledge})
+
+    result = await call(hass, "get_pantry_check", {"scope": "general"})
+    reasons = {row["article"]: row["reason"] for row in result["articles"]}
+
+    assert reasons == {"rice": "no_history"}
 
 
 async def test_scenario_9_measured_cadence_replaces_the_guess(hass: HomeAssistant, seeded: MockConfigEntry):
@@ -443,3 +463,23 @@ async def test_scenario_9_measured_cadence_replaces_the_guess(hass: HomeAssistan
     rice = next(row for row in result["articles"] if row["article"] == "rice")
     assert rice["reason"] == "cadence"
     assert rice["last_listed"] == (THURSDAY - timedelta(days=40)).isoformat()
+
+
+async def test_scenario_9_one_off_purchases_are_never_nagged_about(hass: HomeAssistant, seeded: MockConfigEntry):
+    """A can opener bought once in a year is not "due" a month later.
+
+    Over half of everything ever bought was bought exactly once. Treating "no
+    measured cadence" as "the default cadence" would turn every one of those
+    into a standing obligation and drown the short, useful list.
+    """
+    store = store_of(seeded)
+    opener = store.ensure_article("can opener")
+    opener.department = "household"
+    opener.times = 1
+    opener.last_listed = THURSDAY - timedelta(days=300)
+
+    assert not store.recurs("can opener")
+    assert not store.is_due("can opener", THURSDAY)
+
+    result = await call(hass, "get_pantry_check", {"scope": "general"})
+    assert "can opener" not in [row["article"] for row in result["articles"]]

@@ -237,8 +237,16 @@ class MealPlanStore:
         return article
 
     def last_listed(self, name: str) -> date | None:
-        """Return the most recent day this article went onto a list."""
+        """Return the most recent day this article went onto a list.
+
+        Seeded and live together, most recent wins. Without the seeded date a
+        freshly imported knowledge base knows how often something comes round
+        but not when it last did, which is the same as not knowing.
+        """
         days = [item.on for item in self.data.listings if item.article == name]
+        article = self.article(name)
+        if article is not None and article.last_listed is not None:
+            days.append(article.last_listed)
         return max(days) if days else None
 
     def cadence_days(self, name: str) -> float | None:
@@ -257,12 +265,24 @@ class MealPlanStore:
         article = self.article(name)
         return article.cadence_days if article else None
 
+    def recurs(self, name: str) -> bool:
+        """Return whether this article is something you buy again.
+
+        Over half of everything ever bought was bought exactly once — a can
+        opener, a splatter lid, a whiteboard marker. Those have no cadence, and
+        treating "no cadence" as "the default cadence" turns every one of them
+        into a standing obligation. Something recurs if it has been seen twice
+        (so there is a real gap to measure) or if it is a staple.
+        """
+        article = self.article(name)
+        return self.cadence_days(name) is not None or bool(article and article.staple)
+
     def is_due(self, name: str, today: date) -> bool:
-        """Return whether a pantry article is due by its own cadence."""
-        cadence = self.cadence_days(name) or DEFAULT_PANTRY_CADENCE_DAYS
+        """Return whether a recurring pantry article is due by its own cadence."""
         last = self.last_listed(name)
-        if last is None:
+        if last is None or not self.recurs(name):
             return False
+        cadence = self.cadence_days(name) or DEFAULT_PANTRY_CADENCE_DAYS
         return (today - last).days >= cadence
 
     # ------------------------------------------------------------------ dishes
