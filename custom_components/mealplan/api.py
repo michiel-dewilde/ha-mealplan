@@ -46,6 +46,11 @@ SCORE_FREQUENCY = 1.0
 DEFAULT_EXPIRY_HORIZON_DAYS = 7
 DEFAULT_SUGGESTION_LIMIT = 3
 
+# How long ago a dish has to have been eaten before it is worth offering as
+# "we have not had this in a while". Six weeks is roughly the point where a
+# household stops thinking of a dish as recent.
+WILDCARD_MIN_DAYS = 42
+
 
 @dataclass(slots=True)
 class Context:
@@ -623,6 +628,12 @@ def suggest_menu(
     what is about to go off. The last is the strongest, because it is a lookup
     instead of a guess: there is mince that expires Thursday, so which dishes
     use mince?
+
+    Variety is asked as a separate question. Ranking answers "what fits?", and
+    a fitness score will always favour what the household eats anyway; mixing
+    "we have not had this in ages" into the same number produces neither. So
+    the ranking stays about fitting, and one clearly marked `wildcard` carries
+    the other question.
     """
     store = ctx.store
     window = ctx.window()
@@ -641,7 +652,44 @@ def suggest_menu(
         candidates = [c for c in scored[day] if c["dish"] == mine or c["dish"] not in elsewhere]
         candidates.sort(key=lambda c: (c["dish"] != mine, -c["score"]))
         suggestions.append({"date": day.isoformat(), "weekday": weekday_key(day), "candidates": candidates[:limit]})
-    return {"start": first.isoformat(), "suggestions": suggestions}
+
+    # Only the top pick of each day counts as "already proposed". Excluding
+    # every third-choice candidate as well would mean that with a rotation of
+    # any normal size there is never a wildcard at all — every dish appears
+    # somewhere in seven days of three suggestions.
+    proposed = {day["candidates"][0]["dish"] for day in suggestions if day["candidates"]}
+    return {
+        "start": first.isoformat(),
+        "suggestions": suggestions,
+        "wildcard": _wildcard(ctx, proposed),
+    }
+
+
+def _wildcard(ctx: Context, proposed: set[str]) -> dict[str, Any] | None:
+    """Return one dish it has been a long time since, or None.
+
+    Seven of this household's dishes were eaten exactly once. They have no
+    interval, so they score nothing, so they were never suggested — while a dish
+    with a bogus interval was suggested every single day. Both of those are the
+    ranking failing at variety, which is why variety is asked separately.
+
+    The one furthest back wins, so the list works its way through rather than
+    offering the same forgotten dish forever.
+    """
+    store = ctx.store
+    candidates: list[tuple[date, str]] = []
+    for name in store.data.dishes:
+        if name in proposed or store.dish_dormant(name, ctx.today):
+            continue
+        last = store.dish_last(name, ctx.today)
+        if last is None or (ctx.today - last).days < WILDCARD_MIN_DAYS:
+            continue
+        candidates.append((last, name))
+
+    if not candidates:
+        return None
+    last, name = min(candidates)
+    return {"dish": name, "last": last.isoformat(), "days_since": (ctx.today - last).days}
 
 
 def _reserve(scored: dict[date, list[dict[str, Any]]]) -> dict[date, str]:
@@ -666,12 +714,23 @@ def _reserve(scored: dict[date, list[dict[str, Any]]]) -> dict[date, str]:
 
 
 def _score_dishes(ctx: Context, day: date, expiring: set[str]) -> list[dict[str, Any]]:
-    """Rank the dishes for one day, with the reasons attached."""
+    """Rank the dishes for one day, with the reasons attached.
+
+    The overdue signal is the delicate one. An interval measured from a single
+    gap is not a rhythm: two dishes eaten six days apart, once, two years ago
+    produce "interval: 6 days" and are thereafter permanently, maximally
+    overdue — which is exactly how a dish nobody has made since 2025 came to
+    outrank one eaten thirty-six times. `store.dish_rhythm` refuses to call
+    that a rhythm, and a dormant dish is left out altogether.
+    """
     store = ctx.store
     weekday = weekday_key(day)
     scored: list[dict[str, Any]] = []
 
     for name, dish in store.data.dishes.items():
+        if store.dish_dormant(name, ctx.today):
+            continue
+
         score = 0.0
         reasons: list[str] = []
 
@@ -685,8 +744,9 @@ def _score_dishes(ctx: Context, day: date, expiring: set[str]) -> list[dict[str,
             reasons.append("usual_day")
 
         last = store.dish_last(name, ctx.today)
-        if last is not None and dish.interval_days:
-            overdue = (ctx.today - last).days / dish.interval_days
+        rhythm = store.dish_rhythm(name)
+        if last is not None and rhythm:
+            overdue = (ctx.today - last).days / rhythm
             if overdue >= 1:
                 score += SCORE_OVERDUE * min(overdue, 3)
                 reasons.append("overdue")

@@ -127,7 +127,10 @@ def _tools(entry: MealPlanConfigEntry) -> list[llm.Tool]:
             "suggest_menu",
             "Suggest dishes for the empty days in the planning window, ranked by what is "
             "about to expire, the usual weekday for a dish, how overdue it is, and how "
-            "often it is eaten. Suggests dishes only — never a shopping list.",
+            "often it is eaten. Suggests dishes only — never a shopping list. Alongside "
+            "the ranking it returns one `wildcard`: a dish it has been a long time since, "
+            "offered as a deliberate change rather than as a good fit. Dishes nobody has "
+            "eaten in eighteen months are dormant and are not suggested at all.",
             {
                 vol.Optional("start"): str,
                 vol.Optional("days"): vol.All(vol.Coerce(int), vol.Range(min=1, max=31)),

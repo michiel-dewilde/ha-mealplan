@@ -46,6 +46,12 @@ SAVE_DELAY = 5
 MIN_LIVE_LISTINGS = 3
 """Below this, the seeded cadence is the better estimate than what we have measured."""
 
+MIN_DISH_OBSERVATIONS = 4
+"""Four meals is three gaps to average. One gap is a coincidence, not a rhythm."""
+
+DORMANT_AFTER_DAYS = 548
+"""Eighteen months. Long enough for a yearly dish to come round once and keep itself alive."""
+
 UNKNOWN_LABELS = {"en": "Anything else", "nl": "Nog iets"}
 """What to call the bucket unclassified items land in. Not an error message."""
 
@@ -308,6 +314,36 @@ class MealPlanStore:
         candidates = [d for d in (dish.last if dish else None,) if d is not None]
         candidates += [day for day, entry in self.data.plan.items() if entry.dish == name and day <= today]
         return max(candidates) if candidates else None
+
+    def dish_rhythm(self, name: str) -> float | None:
+        """Return how often a dish comes round, or None if that is not known.
+
+        A stated interval is only believed once the dish has been eaten enough
+        times to have a rhythm rather than a coincidence. Below the threshold
+        two meals a week apart, once, would claim "every seven days" and stay
+        maximally overdue for the rest of the installation's life.
+
+        The same reasoning as `recurs` on the article side: no measurement is
+        not the same as a default measurement.
+        """
+        dish = self.dish(name)
+        if dish is None or not dish.interval_days:
+            return None
+        return dish.interval_days if self.dish_times(name) >= MIN_DISH_OBSERVATIONS else None
+
+    def dish_dormant(self, name: str, today: date) -> bool:
+        """Return whether a dish has fallen out of the rotation.
+
+        Eighteen months rather than twelve, and deliberately: a dish eaten every
+        January is not retired in July. Twelve months would drop it from the
+        suggestions in the last weeks before its season comes round, and it
+        would then never resurface on its own.
+
+        Dormant is not deleted. The dish stays in the knowledge base and in the
+        type-ahead, and eating it once wakes it up.
+        """
+        last = self.dish_last(name, today)
+        return last is not None and (today - last).days > DORMANT_AFTER_DAYS
 
     def dish_ingredients(self, name: str, kind: Kind | None = None) -> list[str]:
         """Return a dish's ingredient article names, optionally filtered by kind."""

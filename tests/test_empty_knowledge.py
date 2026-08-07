@@ -1,7 +1,7 @@
 """The integration has to be fully usable with nothing seeded.
 
 Someone installing this from HACS does not have forty weeks of handwritten
-lists. They get thirteen departments and nothing else, and that has to be a
+lists. They get sixteen departments and nothing else, and that has to be a
 working integration rather than a broken one. It is also the honest test of the
 core: anything that only works with a seeded knowledge base has its intelligence
 in the wrong place.
@@ -27,13 +27,25 @@ async def call(hass: HomeAssistant, service: str, data: dict[str, Any] | None = 
     return await hass.services.async_call(DOMAIN, service, data or {}, blocking=True, return_response=True)
 
 
-async def test_starts_with_thirteen_departments_and_nothing_else(hass: HomeAssistant, entry: MockConfigEntry):
+async def test_starts_with_the_default_departments_and_nothing_else(hass: HomeAssistant, entry: MockConfigEntry):
     store = entry.runtime_data.store
-    assert len(store.data.departments) == 13
+    assert len(store.data.departments) == 16
     assert store.department("produce") is not None
     assert store.data.articles == {}
     assert store.data.dishes == {}
     assert store.data.stores == {}
+
+
+async def test_frozen_behaves_like_a_cupboard_and_not_like_a_meal(hass: HomeAssistant, entry: MockConfigEntry):
+    """Frozen peas go on the list because they ran out, not because a meal was planned.
+
+    As `fresh` they were added silently when planning a dish and never turned up
+    in the cupboard round. Both of those were wrong, and neither was visible
+    from the label.
+    """
+    store = entry.runtime_data.store
+    assert store.department("frozen").kind == "pantry"
+    assert store.department("veggie").kind == "fresh", "the split kept the fresh side fresh"
 
 
 async def test_a_shopping_list_still_works(hass: HomeAssistant, entry: MockConfigEntry):

@@ -30,6 +30,8 @@ const STRINGS = {
     close: "Close",
     suggestions: "Suggested",
     often: "Often",
+    long_ago: "Not had in a while",
+    months_ago: "{n} months ago",
     why_usual_day: "usual day",
     why_overdue: "a while ago",
     why_never_planned: "never yet",
@@ -90,6 +92,8 @@ const STRINGS = {
     close: "Sluiten",
     suggestions: "Voorstel",
     often: "Vaak",
+    long_ago: "Lang niet gehad",
+    months_ago: "{n} maanden geleden",
     why_usual_day: "vaste dag",
     why_overdue: "lang geleden",
     why_never_planned: "nog nooit",
@@ -428,6 +432,7 @@ class MealplanMenuCard extends MealplanCard {
     const suggested = await this.call("suggest_menu", { limit: 3 }, true);
     if (suggested?.suggestions) {
       this._suggestions = Object.fromEntries(suggested.suggestions.map((s) => [s.date, s.candidates || []]));
+      this._wildcard = suggested.wildcard || null;
     }
     if (this._open) this.renderSheet();
     if (this._error) this.renderFoot();
@@ -482,7 +487,12 @@ class MealplanMenuCard extends MealplanCard {
         }
       : stored;
     const suggestions = (this._suggestions?.[date] || []).map((c) => c.dish);
-    const frequent = this.frequent().filter((name) => !suggestions.includes(name));
+    // The wildcard answers a different question — "fancy something else?" — so
+    // it gets its own heading rather than being mixed into the ranking.
+    const wildcard = this._wildcard && !suggestions.includes(this._wildcard.dish) ? this._wildcard : null;
+    const frequent = this.frequent().filter(
+      (name) => !suggestions.includes(name) && name !== wildcard?.dish,
+    );
 
     const chip = (name, hint) =>
       `<button class="chip${stored.dish === name ? " on" : ""}" data-act="pick" data-dish="${escapeHtml(name)}">${escapeHtml(name)}${hint ? `<small>${escapeHtml(hint)}</small>` : ""}</button>`;
@@ -493,6 +503,7 @@ class MealplanMenuCard extends MealplanCard {
         <button data-act="close" aria-label="${escapeHtml(this.t("close"))}">✕</button>
       </div>
       ${suggestions.length ? `<div class="label">${escapeHtml(this.t("suggestions"))}</div><div class="chips">${suggestions.map((name) => chip(name, this.reason(date, name))).join("")}</div>` : ""}
+      ${wildcard ? `<div class="label">${escapeHtml(this.t("long_ago"))}</div><div class="chips">${chip(wildcard.dish, this.t("months_ago", { n: Math.round(wildcard.days_since / 30) }))}</div>` : ""}
       ${frequent.length ? `<div class="label">${escapeHtml(this.t("often"))}</div><div class="chips">${frequent.map((name) => chip(name)).join("")}</div>` : ""}
       <div class="field"><input type="text" class="dish" list="mealplan-dishes" placeholder="${escapeHtml(this.t("dish"))}" value="${escapeHtml(day.dish || "")}"></div>
       <div class="field"><input type="text" class="note" placeholder="${escapeHtml(this.t("note"))}" value="${escapeHtml(day.note || "")}"></div>

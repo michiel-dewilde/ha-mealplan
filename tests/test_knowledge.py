@@ -23,7 +23,7 @@ async def call(hass: HomeAssistant, service: str, data: dict[str, Any] | None = 
 
 async def test_import_seeds_everything(hass: HomeAssistant, entry: MockConfigEntry, knowledge: dict[str, Any]):
     result = await call(hass, "import_knowledge", {"knowledge": knowledge})
-    assert result == {"departments": 13, "stores": 1, "articles": 4, "dishes": 2, "kept_manual": []}
+    assert result == {"departments": 16, "stores": 1, "articles": 4, "dishes": 2, "kept_manual": []}
 
     store = entry.runtime_data.store
     assert store.data.stores["Corner Market"].department_order == ["produce", "butcher", "dry_goods"]
@@ -61,7 +61,7 @@ async def test_export_round_trips(hass: HomeAssistant, entry: MockConfigEntry, k
     await call(hass, "import_knowledge", {"knowledge": knowledge})
     exported = await call(hass, "export_knowledge")
 
-    assert exported["schema"] == "2.1"
+    assert exported["schema"] == "2.2"
     assert {a["name"] for a in exported["articles"]} == {"minced beef", "tomatoes", "rice", "poultry rub"}
     assert {d["name"] for d in exported["dishes"]} == {"tacos", "rice"}
 
