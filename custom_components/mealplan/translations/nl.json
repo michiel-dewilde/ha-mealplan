@@ -84,6 +84,12 @@
         "menu": "Voor het geplande menu"
       }
     },
+    "round": {
+      "options": {
+        "pantry": "Kastronde",
+        "fridge": "Frigoronde"
+      }
+    },
     "list_name": {
       "options": {
         "shopping": "Boodschappen",
@@ -165,6 +171,35 @@
         "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
         "departments": { "name": "Afdelingen", "description": "Afdelingssleutels, in looproute. Wat je weglaat houdt zijn onderlinge volgorde achteraan." },
         "store": { "name": "Winkel", "description": "Standaard de geselecteerde winkel." }
+      }
+    },
+    "check_off": {
+      "name": "Een ronde beantwoorden",
+      "description": "Legt vast wat een ronde opleverde: nog genoeg, of op. \"Op\" zet het meteen op de lijst, of vinkt het bij de frigoronde uit huis. Laat je de artikelen leeg, dan wordt de hele ronde in één keer beantwoord.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "articles": { "name": "Artikelen", "description": "Wat je nagekeken hebt. Leeg laten beantwoordt alles waar de ronde naar vraagt." },
+        "enough": { "name": "Nog genoeg", "description": "Aan voor nog genoeg, uit voor op." },
+        "round": { "name": "Ronde", "description": "De kastronde of de frigoronde." },
+        "scope": { "name": "Omvang", "description": "Welke kastronde beantwoord wordt als je geen artikelen noemt." },
+        "when": { "name": "Welke beurt", "description": "Waar iets dat op is naartoe gaat: deze beurt of de volgende." }
+      }
+    },
+    "reset_round": {
+      "name": "Een ronde opnieuw beginnen",
+      "description": "Trekt de antwoorden van vandaag in, zodat alles opnieuw gevraagd wordt. Wat die antwoorden op de lijst zetten, blijft staan.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "round": { "name": "Ronde", "description": "De kastronde of de frigoronde." }
+      }
+    },
+    "move_item": {
+      "name": "Item verplaatsen",
+      "description": "Verplaatst iets van de ene lijst naar de andere. Geen nieuwe notering: het is hetzelfde item, op een andere lijst.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "item": { "name": "Item", "description": "Wat je wil verplaatsen, op naam of op uid." },
+        "to": { "name": "Naar lijst", "description": "Waar het terecht moet komen." }
       }
     },
     "set_expiry": {
@@ -312,6 +347,8 @@
     "unknown_entry": { "message": "Er is geen weekplanning met id {entry_id}." },
     "no_meal_plan": { "message": "Er is geen weekplanning ingesteld." },
     "no_store": { "message": "Er is geen winkel gekozen, dus er valt geen looproute vast te leggen." },
+    "unknown_item": { "message": "Er staat nergens iets met de naam “{item}” op een lijst." },
+    "check_off_needs_articles": { "message": "Zeg welke artikelen op zijn. Alleen “nog genoeg” kan een hele ronde in één keer beantwoorden." },
     "ambiguous_meal_plan": { "message": "Er is meer dan één weekplanning. Zeg welke." },
     "undated_stock_disabled": { "message": "Voorraaditems zonder vervaldatum staan uit voor deze weekplanning." },
     "unsupported_schema": { "message": "Dit kennisbestand gebruikt schema {schema}; deze versie leest {expected}." }

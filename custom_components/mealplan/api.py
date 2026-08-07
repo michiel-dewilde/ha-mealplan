@@ -30,6 +30,7 @@ from .const import (
     Kind,
     ListName,
     PantryScope,
+    Round,
     ShelfLife,
     StoreSource,
     When,
@@ -161,15 +162,135 @@ def running_low(ctx: Context, article: str, when: When = When.NOW) -> dict[str, 
 
     Two destinations, because the paper already had two: what has to come along
     this trip, and what can wait for the next one.
+
+    The uid comes back so that whoever asked can undo it without searching for
+    what they just added — that is what makes "→ next trip" a single tap
+    straight after "gone" rather than a trip to the list.
     """
     list_name = ListName.SHOPPING if when == When.NOW else ListName.LATER
     if (existing := ctx.store.find_by_summary(list_name, article)) is not None:
-        return {"article": existing.summary, "list": str(list_name), "added": False}
+        return {"article": existing.summary, "uid": existing.uid, "list": str(list_name), "added": False}
 
     item = ctx.store.add_item(list_name, article, ctx.today)
     ctx.store.sort_list(list_name, ctx.selected_store)
     ctx.commit()
-    return {"article": item.summary, "list": str(list_name), "added": True}
+    return {"article": item.summary, "uid": item.uid, "list": str(list_name), "added": True}
+
+
+def move_item(ctx: Context, item: str, to: ListName, from_list: ListName | None = None) -> dict[str, Any]:
+    """Move something from one list to another.
+
+    The item is named by uid or by what it says. Moving is not listing: nothing
+    is recorded and the day it was first written down stays as it was. It is the
+    same item, on a different list.
+    """
+    store = ctx.store
+    sources = [from_list] if from_list is not None else [name for name in ListName if name != to]
+
+    for source in sources:
+        found = store.find_item(source, item) or store.find_by_summary(source, item)
+        if found is None:
+            continue
+        if source == to:
+            return {"item": found.summary, "uid": found.uid, "list": str(to), "moved": False}
+        store.move_item(found, source, to)
+        store.sort_list(to, ctx.selected_store)
+        ctx.commit()
+        return {"item": found.summary, "uid": found.uid, "from": str(source), "list": str(to), "moved": True}
+
+    raise ServiceValidationError(
+        translation_domain=DOMAIN, translation_key="unknown_item", translation_placeholders={"item": item}
+    )
+
+
+def check_off(
+    ctx: Context,
+    *,
+    articles: list[str] | None = None,
+    enough: bool = True,
+    round_name: Round = Round.PANTRY,
+    scope: PantryScope = PantryScope.GENERAL,
+    when: When = When.NOW,
+) -> dict[str, Any]:
+    """Answer a round: for each article, still enough or run out.
+
+    One service for the whole round, because the round asks one question. Before
+    this, "still enough" was a card hiding a row until the next redraw — the
+    answer existed for as long as you were looking at it. Now it is written
+    down, and `store.last_answer` treats having looked as worth the same as
+    having bought: the question is answered until the article's own cadence asks
+    again.
+
+    The consequence rides along with the answer rather than being a second act.
+    "Gone" at a cupboard puts it on the list; "gone" at the fridge ticks it out
+    of the house. That is what the tap means, and splitting the two would let
+    one happen without the other.
+
+    Without `articles` this answers the whole round — the "I can see the
+    cupboard is full" case. Only for "still enough": answering "gone" for
+    everything you did not look at is not something a tap should be able to do
+    by accident.
+    """
+    store = ctx.store
+    fridge = round_name == Round.FRIDGE
+
+    if articles is None:
+        if not enough:
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="check_off_needs_articles")
+        if fridge:
+            names = [item.summary for item in store.open_items(ListName.STOCK)]
+        else:
+            # What is already on the list has been answered another way.
+            names = [
+                entry["article"] for entry in get_pantry_check(ctx, scope)["articles"] if not entry["already_listed"]
+            ]
+    else:
+        names = [name.strip() for name in articles if name.strip()]
+
+    listed: list[str] = []
+    used: list[str] = []
+    for name in names:
+        store.record_event(EventKind.CHECKED, ctx.today, article=name, round=str(round_name), enough=enough)
+        if enough:
+            continue
+        if fridge:
+            item = store.find_by_summary(ListName.STOCK, name)
+            if item is not None:
+                store.complete_item(ListName.STOCK, item, ctx.today)
+                used.append(name)
+        elif store.find_by_summary(ListName.SHOPPING if when == When.NOW else ListName.LATER, name) is None:
+            target = ListName.SHOPPING if when == When.NOW else ListName.LATER
+            store.add_item(target, name, ctx.today)
+            store.sort_list(target, ctx.selected_store)
+            listed.append(name)
+
+    ctx.commit()
+    return {
+        "round": str(round_name),
+        "enough": enough,
+        "checked": names,
+        "listed": listed,
+        "used": used,
+        "checked_today": len(store.checks_on(ctx.today, str(round_name))),
+    }
+
+
+def reset_round(ctx: Context, round_name: Round = Round.PANTRY) -> dict[str, Any]:
+    """Take back today's answers to a round, so it asks everything again.
+
+    For a mis-tapped row, or a round somebody else started and left half done.
+    Only today's: yesterday's cupboard round is history and this is not an
+    eraser.
+
+    What the answers *caused* stays. Something you put on the list is on the
+    list, and it says so on the row when the round comes back — putting it on
+    was a separate act and taking it off is one too. Undoing a purchase because
+    an answer was withdrawn is exactly the kind of quiet reach this design does
+    not make.
+    """
+    withdrawn = ctx.store.forget_checks(ctx.today, str(round_name))
+    ctx.commit()
+    return {"round": str(round_name), "withdrawn": withdrawn, "checked_today": 0}
 
 
 def plan_menu(
@@ -213,7 +334,7 @@ def complete_all(ctx: Context, except_items: list[str] | None = None) -> dict[st
         if any(text in folded or folded in text for text in keep):
             kept.append(item.summary)
             continue
-        ctx.store.complete_item(ListName.SHOPPING, item, ctx.today)
+        ctx.store.complete_item(ListName.SHOPPING, item, ctx.today, store=ctx.selected_store)
         completed.append(item.summary)
 
     ctx.commit()
@@ -595,6 +716,12 @@ def get_pantry_check(ctx: Context, scope: PantryScope = PantryScope.GENERAL) -> 
 
     Exactly the pantry articles: the fresh ones you are buying anyway. That is
     what makes the answer short enough to act on standing at an open cupboard.
+
+    Ordered by weight, not by name. Being on this list already means the filter
+    decided it was urgent, so urgency cannot also be the sort key; what is left
+    to say is which of them matters most to this household. Coffee and cat food
+    come first and stay first, which is what makes the order worth remembering
+    from one round to the next.
     """
     store = ctx.store
     if scope == PantryScope.MENU:
@@ -605,16 +732,20 @@ def get_pantry_check(ctx: Context, scope: PantryScope = PantryScope.GENERAL) -> 
         reasons = dict.fromkeys(names, "menu")
     else:
         reasons = _due_pantry_articles(ctx)
-        names = sorted(reasons)
+        names = list(reasons)
+
+    names.sort(key=lambda name: _pantry_weight(ctx, name))
 
     on_list = {item.summary.casefold() for item in store.open_items(ListName.SHOPPING)}
     return {
         "scope": str(scope),
+        "checked_today": len(store.checks_on(ctx.today, str(Round.PANTRY))),
         "articles": [
             {
                 "article": name,
                 "reason": reasons[name],
                 "last_listed": last.isoformat() if (last := store.last_listed(name)) else None,
+                "last_checked": checked.isoformat() if (checked := store.last_checked(name)) else None,
                 "cadence_days": store.cadence_days(name),
                 "already_listed": name.casefold() in on_list,
             }
@@ -623,14 +754,29 @@ def get_pantry_check(ctx: Context, scope: PantryScope = PantryScope.GENERAL) -> 
     }
 
 
+def _pantry_weight(ctx: Context, name: str) -> tuple[int, str, str]:
+    """Return the sort key for one row of a cupboard round.
+
+    Most often bought first, and on a tie the one longest unlooked-at. Counted
+    from listings rather than purchases, because that is what forty sheets of
+    paper can tell us: they record what was written down, never what came
+    through the door. Every purchase begins as a listing, so as a *ranking* the
+    two agree, and the purchases refine it from here on by themselves.
+    """
+    article = ctx.store.article(name)
+    checked = ctx.store.last_checked(name)
+    return (-(article.times if article else 0), checked.isoformat() if checked else "", name)
+
+
 def _due_pantry_articles(ctx: Context) -> dict[str, str]:
     """Return the pantry articles to check, and why.
 
     A seeded article knows how often it comes round but not when it last did —
     the knowledge file carries a cadence, not a date. Until this installation
-    has seen the article go onto a list itself, "is it due?" has no honest
-    answer, and returning nothing at all would make the whole question useless
-    on a freshly seeded system.
+    has watched the article itself — seen it go onto a list, or been told at a
+    cupboard that there is still plenty — "is it due?" has no honest answer, and
+    returning nothing at all would make the whole question useless on a freshly
+    seeded system.
 
     So there are two reasons an article shows up: `cadence`, once there is
     something to measure against, and `no_history` for the staples we simply
@@ -642,7 +788,7 @@ def _due_pantry_articles(ctx: Context) -> dict[str, str]:
     for article in store.data.articles.values():
         if store.article_kind(article.name) != Kind.PANTRY:
             continue
-        if store.last_listed(article.name) is not None:
+        if store.last_answer(article.name) is not None:
             if store.is_due(article.name, ctx.today):
                 due[article.name] = "cadence"
         elif article.staple:

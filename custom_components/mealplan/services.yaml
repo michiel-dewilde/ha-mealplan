@@ -99,6 +99,79 @@ set_store_order:
       selector:
         text:
 
+check_off:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    articles:
+      selector:
+        object:
+    enough:
+      default: true
+      selector:
+        boolean:
+    round:
+      default: pantry
+      selector:
+        select:
+          translation_key: round
+          options:
+            - pantry
+            - fridge
+    scope:
+      default: general
+      selector:
+        select:
+          translation_key: pantry_scope
+          options:
+            - general
+            - menu
+    when:
+      default: now
+      selector:
+        select:
+          translation_key: when
+          options:
+            - now
+            - later
+
+reset_round:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    round:
+      default: pantry
+      selector:
+        select:
+          translation_key: round
+          options:
+            - pantry
+            - fridge
+
+move_item:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    item:
+      required: true
+      selector:
+        text:
+    to:
+      required: true
+      selector:
+        select:
+          translation_key: list_name
+          options:
+            - shopping
+            - later
+            - stock
+
 set_expiry:
   fields:
     entry_id:

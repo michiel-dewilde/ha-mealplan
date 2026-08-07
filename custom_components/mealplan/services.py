@@ -17,16 +17,19 @@ import voluptuous as vol
 from . import api
 from .const import (
     ATTR_ARTICLE,
+    ATTR_ARTICLES,
     ATTR_DATE,
     ATTR_DAYS,
     ATTR_DEPARTMENTS,
     ATTR_DISH,
+    ATTR_ENOUGH,
     ATTR_ENTRY_ID,
     ATTR_EXCEPT_ITEMS,
     ATTR_EXPIRY,
     ATTR_INCLUDE_COMPLETED,
     ATTR_INCLUDE_PANTRY,
     ATTR_INGREDIENTS,
+    ATTR_ITEM,
     ATTR_KIND,
     ATTR_KNOWLEDGE,
     ATTR_LIMIT,
@@ -34,15 +37,18 @@ from .const import (
     ATTR_NOTE,
     ATTR_OFFSET,
     ATTR_PEOPLE,
+    ATTR_ROUND,
     ATTR_SCOPE,
     ATTR_SERVINGS,
     ATTR_SINCE,
     ATTR_START,
     ATTR_STORE,
+    ATTR_TO,
     ATTR_UNTIL,
     ATTR_WHEN,
     DOMAIN,
     SERVICE_ADD_DISH,
+    SERVICE_CHECK_OFF,
     SERVICE_COMPLETE_ALL,
     SERVICE_EXPORT_KNOWLEDGE,
     SERVICE_GET_EXPIRING,
@@ -53,8 +59,10 @@ from .const import (
     SERVICE_IMPORT_KNOWLEDGE,
     SERVICE_LEARN_DISH,
     SERVICE_LIST_DISHES,
+    SERVICE_MOVE_ITEM,
     SERVICE_PLAN_MENU,
     SERVICE_PRINT_LIST,
+    SERVICE_RESET_ROUND,
     SERVICE_RUNNING_LOW,
     SERVICE_SET_EXPIRY,
     SERVICE_SET_STORE_ORDER,
@@ -64,6 +72,7 @@ from .const import (
     EventKind,
     ListName,
     PantryScope,
+    Round,
     ShelfLife,
     When,
 )
@@ -229,6 +238,59 @@ def async_setup_services(hass: HomeAssistant) -> None:
             {
                 vol.Required(ATTR_DEPARTMENTS): vol.All(cv.ensure_list, [cv.string]),
                 vol.Optional(ATTR_STORE): cv.string,
+            }
+        ),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    async def handle_check_off(call: ServiceCall) -> ServiceResponse:
+        return api.check_off(
+            _ctx(hass, call),
+            articles=call.data.get(ATTR_ARTICLES),
+            enough=call.data.get(ATTR_ENOUGH, True),
+            round_name=Round(call.data.get(ATTR_ROUND, Round.PANTRY)),
+            scope=PantryScope(call.data.get(ATTR_SCOPE, PantryScope.GENERAL)),
+            when=When(call.data.get(ATTR_WHEN, When.NOW)),
+        )
+
+    register(
+        DOMAIN,
+        SERVICE_CHECK_OFF,
+        handle_check_off,
+        schema=_schema(
+            {
+                vol.Optional(ATTR_ARTICLES): vol.All(cv.ensure_list, [cv.string]),
+                vol.Optional(ATTR_ENOUGH, default=True): cv.boolean,
+                vol.Optional(ATTR_ROUND, default=str(Round.PANTRY)): vol.In([str(r) for r in Round]),
+                vol.Optional(ATTR_SCOPE, default=str(PantryScope.GENERAL)): vol.In([str(s) for s in PantryScope]),
+                vol.Optional(ATTR_WHEN, default=str(When.NOW)): vol.In([str(w) for w in When]),
+            }
+        ),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    async def handle_reset_round(call: ServiceCall) -> ServiceResponse:
+        return api.reset_round(_ctx(hass, call), Round(call.data.get(ATTR_ROUND, Round.PANTRY)))
+
+    register(
+        DOMAIN,
+        SERVICE_RESET_ROUND,
+        handle_reset_round,
+        schema=_schema({vol.Optional(ATTR_ROUND, default=str(Round.PANTRY)): vol.In([str(r) for r in Round])}),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    async def handle_move_item(call: ServiceCall) -> ServiceResponse:
+        return api.move_item(_ctx(hass, call), call.data[ATTR_ITEM], ListName(call.data[ATTR_TO]))
+
+    register(
+        DOMAIN,
+        SERVICE_MOVE_ITEM,
+        handle_move_item,
+        schema=_schema(
+            {
+                vol.Required(ATTR_ITEM): cv.string,
+                vol.Required(ATTR_TO): vol.In([str(name) for name in ListName]),
             }
         ),
         supports_response=SupportsResponse.OPTIONAL,

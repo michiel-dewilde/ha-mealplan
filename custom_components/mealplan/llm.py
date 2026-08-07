@@ -23,7 +23,7 @@ from homeassistant.util.json import JsonObjectType
 import voluptuous as vol
 
 from . import api
-from .const import DOMAIN, EventKind, ListName, PantryScope, When
+from .const import DOMAIN, EventKind, ListName, PantryScope, Round, When
 from .knowledge import export_knowledge
 from .options import plan_options
 from .types import MealPlanConfigEntry
@@ -215,6 +215,46 @@ def _tools(entry: MealPlanConfigEntry) -> list[llm.Tool]:
             "trip; 'later' means the next one.",
             {vol.Required("article"): str, vol.Optional("when"): vol.In([str(w) for w in When])},
             lambda ctx, args: api.running_low(ctx, args["article"], When(args.get("when", When.NOW))),
+        ),
+        tool(
+            "check_off",
+            "Record the answers a round produced: for each article, still enough or run "
+            "out. 'Run out' is not just a note — on the cupboard round it puts the article "
+            "on the list, on the fridge round it ticks it out of the house. Answering "
+            "'still enough' counts for as much as buying it: the article goes quiet until "
+            "its own cadence asks again. Leave the articles out to answer a whole round at "
+            "once, which is only allowed for 'still enough'.",
+            {
+                vol.Optional("articles"): [str],
+                vol.Optional("enough"): bool,
+                vol.Optional("round"): vol.In([str(r) for r in Round]),
+                vol.Optional("scope"): vol.In([str(s) for s in PantryScope]),
+                vol.Optional("when"): vol.In([str(w) for w in When]),
+            },
+            lambda ctx, args: api.check_off(
+                ctx,
+                articles=args.get("articles"),
+                enough=args.get("enough", True),
+                round_name=Round(args.get("round", Round.PANTRY)),
+                scope=PantryScope(args.get("scope", PantryScope.GENERAL)),
+                when=When(args.get("when", When.NOW)),
+            ),
+        ),
+        tool(
+            "reset_round",
+            "Withdraw today's answers to a round so it asks everything again. For a "
+            "mis-tapped row or a round somebody left half done. Only today's answers go; "
+            "anything those answers put on a list stays on that list.",
+            {vol.Optional("round"): vol.In([str(r) for r in Round])},
+            lambda ctx, args: api.reset_round(ctx, Round(args.get("round", Round.PANTRY))),
+        ),
+        tool(
+            "move_item",
+            "Move something from one list to another — typically from the next trip to "
+            "this one. This is not a new listing and does not count as one: it is the same "
+            "item, on a different list.",
+            {vol.Required("item"): str, vol.Required("to"): vol.In([str(name) for name in ListName])},
+            lambda ctx, args: api.move_item(ctx, args["item"], ListName(args["to"])),
         ),
         tool(
             "complete_all",

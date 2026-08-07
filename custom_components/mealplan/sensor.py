@@ -8,6 +8,7 @@ the departments in walking order.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import timedelta
 from typing import Any
 
@@ -17,7 +18,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import SIGNAL_UPDATED, URGENT_EXPIRY_DAYS, ListName, ShelfLife
+from .const import SIGNAL_UPDATED, URGENT_EXPIRY_DAYS, ListName, Round, ShelfLife
 from .entity import MealPlanEntity
 from .options import plan_options
 from .types import MealPlanConfigEntry
@@ -125,12 +126,31 @@ class MealPlanSensor(MealPlanEntity, SensorEntity):
                 for article in store.data.articles.values()
                 if article.staple and store.article_kind(article.name) is not None
             ),
-            "watch_expiry": sorted(
+            # Most recently used first. This is a list you grab from — standing
+            # at an open fridge, noting what you just put in it — and the thing
+            # you bought last week is far likelier than the one whose name
+            # happens to start with an A.
+            "watch_expiry": self._most_recent_first(
                 article.name for article in store.data.articles.values() if article.shelf_life == ShelfLife.IMPORTANT
             ),
+            "checked_today": {str(round_name): len(store.checks_on(today, str(round_name))) for round_name in Round},
             "learn_suggestions": store.learn_suggestions(),
             "dishes": sorted(store.data.dishes),
         }
+
+    def _most_recent_first(self, names: Iterable[str]) -> list[str]:
+        """Order article names by when they last went onto a list.
+
+        The rule the whole interface follows: where you grab, what you used
+        last is on top; where you look something up because you know its name,
+        it is alphabetical. Never listed sorts last, alphabetically among its
+        own kind — with nothing to go on, a name is as good an order as any.
+        """
+        store = self._store
+        alphabetical = sorted(names)
+        return sorted(
+            alphabetical, key=lambda name: last.toordinal() if (last := store.last_listed(name)) else 0, reverse=True
+        )
 
     def _entity_ids(self) -> dict[str, str]:
         """Return this meal plan's other entities, keyed by role.

@@ -157,6 +157,19 @@ class EventKind(StrEnum):
     """Ticked off the stock list. Eaten up, whenever that happened."""
 
 
+class Round(StrEnum):
+    """Which round is being walked.
+
+    Two rounds, the same rhythm, different content: one asks "do we still have
+    enough of this?" at a cupboard, the other asks "are these dates still
+    right?" at a fridge. Both are answered per article and both can be taken
+    back as a whole.
+    """
+
+    PANTRY = "pantry"
+    FRIDGE = "fridge"
+
+
 class PantryScope(StrEnum):
     """Which pantry articles to check."""
 
@@ -180,6 +193,9 @@ SERVICE_IMPORT_KNOWLEDGE: Final = "import_knowledge"
 SERVICE_EXPORT_KNOWLEDGE: Final = "export_knowledge"
 
 SERVICE_SET_STORE_ORDER: Final = "set_store_order"
+SERVICE_CHECK_OFF: Final = "check_off"
+SERVICE_RESET_ROUND: Final = "reset_round"
+SERVICE_MOVE_ITEM: Final = "move_item"
 
 SERVICE_GET_WEEK: Final = "get_week"
 SERVICE_GET_HISTORY: Final = "get_history"
@@ -196,9 +212,11 @@ ATTR_DATE: Final = "date"
 ATTR_DAYS: Final = "days"
 ATTR_DEPARTMENTS: Final = "departments"
 ATTR_DISH: Final = "dish"
+ATTR_ENOUGH: Final = "enough"
 ATTR_ENTRY_ID: Final = "entry_id"
 ATTR_EXCEPT_ITEMS: Final = "except_items"
 ATTR_EXPIRY: Final = "expiry"
+ATTR_ITEM: Final = "item"
 ATTR_INCLUDE_PANTRY: Final = "include_pantry"
 ATTR_INCLUDE_COMPLETED: Final = "include_completed"
 ATTR_INGREDIENTS: Final = "ingredients"
@@ -211,10 +229,12 @@ ATTR_SINCE: Final = "since"
 ATTR_UNTIL: Final = "until"
 ATTR_NOTE: Final = "note"
 ATTR_PEOPLE: Final = "people"
+ATTR_ROUND: Final = "round"
 ATTR_SCOPE: Final = "scope"
 ATTR_SERVINGS: Final = "servings"
 ATTR_START: Final = "start"
 ATTR_STORE: Final = "store"
+ATTR_TO: Final = "to"
 ATTR_WHEN: Final = "when"
 
 # Dispatcher signal fired whenever the stored data changed.
