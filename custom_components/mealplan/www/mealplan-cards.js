@@ -65,7 +65,14 @@ const STRINGS = {
     now: "This trip",
     enough: "Still enough",
     gone: "Gone",
+    to_shopping: "→ shopping list",
     to_later: "→ next trip",
+    to_stock: "→ in the house",
+    drop: "Off the list",
+    department: "Department",
+    unclassified: "Anything else",
+    name: "Name",
+    bring_later: "Add the next trip",
     on_this_trip: "{x} · on this trip",
     all_checked: "Everything checked",
     again: "Start again",
@@ -131,7 +138,14 @@ const STRINGS = {
     now: "Deze beurt",
     enough: "Nog genoeg",
     gone: "Op",
+    to_shopping: "→ boodschappen",
     to_later: "→ volgende beurt",
+    to_stock: "→ in huis",
+    drop: "Van de lijst",
+    department: "Afdeling",
+    unclassified: "Nog iets",
+    name: "Naam",
+    bring_later: "Volgende beurt erbij",
     on_this_trip: "{x} · op deze beurt",
     all_checked: "Alles nagekeken",
     again: "Opnieuw",
@@ -584,8 +598,37 @@ li .tick i {
   width: 18px; height: 18px; border: 2px solid var(--secondary-text-color);
   border-radius: 4px; display: block;
 }
-li .txt { flex: 1 1 auto; min-width: 0; font-size: 15px; padding-top: 7px; overflow-wrap: anywhere; }
+/* The text is a button and the box is a button, side by side. Ticking off stays
+   one tap on the box; everything else you might want to do to a line lives
+   behind a tap on the line itself. */
+li .txt {
+  flex: 1 1 auto; min-width: 0; font-size: 15px; padding: 7px 0 2px;
+  overflow-wrap: anywhere; text-align: left; display: block;
+}
 li .txt small { display: block; font-size: 12px; color: var(--secondary-text-color); }
+li.menu {
+  display: block; margin: 2px 0 6px; padding: 10px 12px; border-radius: 10px;
+  background: var(--secondary-background-color);
+}
+li.menu .acts { display: flex; flex-wrap: wrap; gap: 6px; }
+li.menu .acts button {
+  min-height: 36px; padding: 0 12px; border-radius: 9px; font-size: 13px;
+  border: 1px solid var(--divider-color); white-space: nowrap;
+  background: var(--card-background-color);
+}
+li.menu .acts button.close { margin-left: auto; border: none; font-size: 17px; padding: 0 8px; }
+li.menu label { display: block; font-size: 12px; color: var(--secondary-text-color); margin: 10px 0 3px; }
+li.menu select {
+  font: inherit; width: 100%; box-sizing: border-box; min-height: 40px; padding: 0 8px;
+  border-radius: 10px; border: 1px solid var(--divider-color);
+  background: var(--card-background-color); color: var(--primary-text-color);
+}
+li.menu .naming { display: flex; gap: 8px; }
+li.menu .naming button {
+  flex: 0 0 auto; min-height: 40px; padding: 0 14px; border-radius: 10px;
+  border: 1px solid var(--divider-color); font-size: 14px;
+  background: var(--card-background-color);
+}
 li em {
   font-style: normal; font-size: 11px; border: 1px solid var(--divider-color);
   border-radius: 4px; padding: 0 4px; margin-left: 6px; color: var(--secondary-text-color);
@@ -607,8 +650,16 @@ li .due.urgent { color: var(--error-color, #db4437); font-weight: 600; }
       <div class="add"><input type="text" placeholder=""><button data-act="add">＋</button></div>
       <div class="body"></div><div class="foot"></div>`;
     this._card.addEventListener("click", (event) => this.onClick(event));
-    this._card.querySelector(".add input").addEventListener("keydown", (event) => {
-      if (event.key === "Enter") this.addItem();
+    // Delegated, because the row menu is built and thrown away on every redraw.
+    this._card.addEventListener("change", (event) => {
+      const select = event.target.closest("select.dept");
+      if (select) this.setDepartment(select.dataset.article, select.value);
+    });
+    this._card.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      if (event.target.closest(".add input")) this.addItem();
+      const renaming = event.target.closest("input.rename");
+      if (renaming) this.rename(this._menu);
     });
   }
 
@@ -632,6 +683,12 @@ li .due.urgent { color: var(--error-color, #db4437); font-weight: 600; }
   }
 
   renderBody() {
+    // Whatever is half typed in the rename field survives the redraw, the same
+    // way the dish sheet keeps a half-typed dish. The card redraws on every
+    // state change in the house, and losing a name mid-word is unforgivable.
+    const typing = this._card.querySelector("input.rename");
+    if (typing) this._draft = typing.value;
+
     const groups = this._data?.groups || [];
     const today = todayISO();
     this._card.querySelector(".body").innerHTML = groups.length
@@ -648,9 +705,9 @@ li .due.urgent { color: var(--error-color, #db4437); font-weight: 600; }
                       )}</span>`;
                 return `<li>
                   <button class="tick" data-act="tick" data-uid="${escapeHtml(item.uid)}" aria-label="${escapeHtml(item.summary)}"><i></i></button>
-                  <span class="txt">${escapeHtml(item.summary)}${item.availability ? `<em>${escapeHtml(item.availability)}</em>` : ""}${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}</span>
+                  <button class="txt" data-act="row" data-uid="${escapeHtml(item.uid)}">${escapeHtml(item.summary)}${item.availability ? `<em>${escapeHtml(item.availability)}</em>` : ""}${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}</button>
                   ${due}
-                </li>`;
+                </li>${this._menu === item.uid ? this.rowMenu(item, group.department) : ""}`;
               })
               .join("")}</ul></section>`,
           )
@@ -658,9 +715,62 @@ li .due.urgent { color: var(--error-color, #db4437); font-weight: 600; }
       : `<div class="pad muted">${escapeHtml(this.t("list_empty"))}</div>`;
   }
 
+  /** Everything you might want to do to one line, one tap away.
+   *
+   *  The same four actions the management screen will need, so it is worth
+   *  building them here where they are used every week rather than twice. */
+  rowMenu(item, department) {
+    // Only the two shopping lists are each other's other list. Sending
+    // something from the fridge to a shopping list is a different statement —
+    // "this is finished" — and the fridge round has a word for that.
+    const other = { shopping: "later", later: "shopping" }[this._list];
+    // Alphabetical, not the walking route. The route is an order you follow;
+    // this is a list you look a name up in, and seventeen headings in aisle
+    // order is seventeen you have to read. "Anything else" stays at the end —
+    // it is not a department, it is where the unfiled go.
+    const departments = [
+      ...(this.attrs.departments || [])
+        .map((d) => [d.key, d.label])
+        .sort((a, b) => a[1].localeCompare(b[1], this.lang)),
+      ["unknown", this.t("unclassified")],
+    ];
+    // The department lives on the group, not on the item: the list is grouped
+    // under headings and the heading is what the item is filed under.
+    const current = departments.some(([key]) => key === department) ? department : "unknown";
+
+    return `<li class="menu">
+      <div class="acts">
+        ${other ? `<button data-act="moveto" data-uid="${escapeHtml(item.uid)}" data-to="${other}">${escapeHtml(this.t(`to_${other}`))}</button>` : ""}
+        <button data-act="drop" data-uid="${escapeHtml(item.uid)}">${escapeHtml(this.t("drop"))}</button>
+        <button class="close" data-act="close" aria-label="${escapeHtml(this.t("close"))}">✕</button>
+      </div>
+      <label>${escapeHtml(this.t("department"))}</label>
+      <select class="dept" data-article="${escapeHtml(item.article || item.summary)}">
+        ${departments
+          .map(([key, label]) => `<option value="${escapeHtml(key)}"${key === current ? " selected" : ""}>${escapeHtml(label)}</option>`)
+          .join("")}
+      </select>
+      <label>${escapeHtml(this.t("name"))}</label>
+      <div class="naming">
+        <input type="text" class="rename" value="${escapeHtml(this._draft ?? item.summary)}">
+        <button data-act="rename" data-uid="${escapeHtml(item.uid)}">${escapeHtml(this.t("save"))}</button>
+      </div>
+    </li>`;
+  }
+
   renderFoot() {
+    // The next trip has one action and it is this one, so `actions: false`
+    // does not take it away: that setting is there to keep the sorting,
+    // ticking-off and printing of a shopping trip off a list you are not
+    // shopping yet. Never automatic on a date — a list that fills itself is a
+    // list you have to read twice.
+    const bring =
+      this._list === "later" && this._data?.open
+        ? `<button data-act="bring">${escapeHtml(this.t("bring_later"))}</button>`
+        : "";
     if (this._config.actions === false) {
-      this._card.querySelector(".foot").innerHTML = this.errorLine();
+      this._card.querySelector(".foot").innerHTML =
+        this.errorLine() + (bring ? `<div class="actions">${bring}</div>` : "");
       return;
     }
     const done = this._data?.completed || 0;
@@ -668,6 +778,7 @@ li .due.urgent { color: var(--error-color, #db4437); font-weight: 600; }
       `${done ? `<div class="done">${escapeHtml(this.t("completed_n", { n: done }))}</div>` : ""}
       ${this.errorLine()}
       <div class="actions">
+        ${bring}
         <button data-act="sort">${escapeHtml(this.t("sort"))}</button>
         <button data-act="complete">${escapeHtml(this._confirming ? this.t("sure") : this.t("complete_all"))}</button>
         <button data-act="print">${escapeHtml(this.t("print"))}</button>
@@ -675,13 +786,64 @@ li .due.urgent { color: var(--error-color, #db4437); font-weight: 600; }
   }
 
   onClick(event) {
-    const action = event.target.closest("[data-act]")?.dataset.act;
+    const target = event.target.closest("[data-act]");
+    const action = target?.dataset.act;
     if (!action) return;
+    const uid = target.dataset.uid;
     if (action === "add") this.addItem();
-    if (action === "tick") this.tick(event.target.closest("[data-uid]").dataset.uid);
+    if (action === "tick") this.tick(uid);
     if (action === "sort") this.call("sort_list").then(() => this.load());
     if (action === "print") this.print();
     if (action === "complete") this.completeAll();
+    if (action === "row") this.openMenu(uid);
+    if (action === "close") this.openMenu(null);
+    if (action === "moveto") this.moveItem(uid, target.dataset.to);
+    if (action === "drop") this.drop(uid);
+    if (action === "rename") this.rename(uid);
+    if (action === "bring") this.call("move_all", { to: "shopping", from: "later" }).then(() => this.load());
+  }
+
+  /** Open one row's menu, or close it. Only ever one at a time: two open menus
+   *  on a phone is a list you can no longer read. */
+  openMenu(uid) {
+    this._menu = this._menu === uid ? null : uid;
+    this._draft = null;
+    this.renderBody();
+  }
+
+  async moveItem(uid, to) {
+    this.openMenu(null);
+    await this.call("move_item", { item: uid, to });
+    this.load();
+  }
+
+  async drop(uid) {
+    const entity = this.attrs.entities?.[this._list];
+    if (!entity) return;
+    this.openMenu(null);
+    await this._hass.callService("todo", "remove_item", { item: uid }, { entity_id: entity });
+    this.load();
+  }
+
+  /** Rename the line, not the article.
+   *
+   *  A typo on today's list is a typo on today's list; renaming the article
+   *  everywhere is a different, heavier act and belongs on the management
+   *  screen. */
+  async rename(uid) {
+    const input = this._card.querySelector("input.rename");
+    const value = input?.value.trim();
+    const entity = this.attrs.entities?.[this._list];
+    if (!value || !entity) return;
+    this.openMenu(null);
+    await this._hass.callService("todo", "update_item", { item: uid, rename: value }, { entity_id: entity });
+    this.load();
+  }
+
+  async setDepartment(article, department) {
+    this.openMenu(null);
+    await this.call("learn_article", { article, department });
+    this.load();
   }
 
   async addItem() {

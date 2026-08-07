@@ -185,7 +185,10 @@ def move_item(ctx: Context, item: str, to: ListName, from_list: ListName | None 
     same item, on a different list.
     """
     store = ctx.store
-    sources = [from_list] if from_list is not None else [name for name in ListName if name != to]
+    # The other lists first, the destination last. Something already where it
+    # was asked to be is not an error and not a duplicate — but if a name sits
+    # on two lists, the one that moves is the one that is not there yet.
+    sources = [from_list] if from_list is not None else [*(n for n in ListName if n != to), to]
 
     for source in sources:
         found = store.find_item(source, item) or store.find_by_summary(source, item)
@@ -201,6 +204,24 @@ def move_item(ctx: Context, item: str, to: ListName, from_list: ListName | None 
     raise ServiceValidationError(
         translation_domain=DOMAIN, translation_key="unknown_item", translation_placeholders={"item": item}
     )
+
+
+def move_all(ctx: Context, to: ListName, from_list: ListName = ListName.LATER) -> dict[str, Any]:
+    """Move everything still open on one list to another.
+
+    This is "the next trip is now this trip", the moment a shopping round
+    starts. Deliberately a button somebody presses and never something that
+    happens on a date or a rollover: a list that fills itself is the one thing
+    this design refuses to build, because a list you did not write is a list you
+    have to read twice.
+    """
+    store = ctx.store
+    moved = [item.summary for item in list(store.open_items(from_list))]
+    for item in list(store.open_items(from_list)):
+        store.move_item(item, from_list, to)
+    store.sort_list(to, ctx.selected_store)
+    ctx.commit()
+    return {"from": str(from_list), "list": str(to), "moved": moved}
 
 
 def check_off(

@@ -25,6 +25,7 @@
     "check_off": "mdi:clipboard-check-outline",
     "reset_round": "mdi:restart",
     "move_item": "mdi:swap-horizontal",
+    "move_all": "mdi:transfer-right",
     "set_expiry": "mdi:calendar-alert",
     "add_stock": "mdi:fridge-alert-outline",
     "learn_dish": "mdi:book-plus-outline",

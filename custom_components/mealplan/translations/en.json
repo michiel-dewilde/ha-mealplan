@@ -202,6 +202,15 @@
         "to": { "name": "To list", "description": "Where it should end up." }
       }
     },
+    "move_all": {
+      "name": "Move a whole list",
+      "description": "Moves everything still open on one list to another — \"the next trip is now this trip\". Always something somebody presses; never a date or a rollover.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "to": { "name": "To list", "description": "Where it should all end up." },
+        "from": { "name": "From list", "description": "Which list is emptied. The next trip by default." }
+      }
+    },
     "set_expiry": {
       "name": "Set expiry date",
       "description": "Records when something in the house goes off.",

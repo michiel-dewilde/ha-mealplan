@@ -257,6 +257,17 @@ def _tools(entry: MealPlanConfigEntry) -> list[llm.Tool]:
             lambda ctx, args: api.move_item(ctx, args["item"], ListName(args["to"])),
         ),
         tool(
+            "move_all",
+            "Move everything still open on one list to another — 'the next trip is now "
+            "this trip', at the moment a shopping round starts. Like moving one item, this "
+            "records nothing and is not a new listing.",
+            {
+                vol.Required("to"): vol.In([str(name) for name in ListName]),
+                vol.Optional("from"): vol.In([str(name) for name in ListName]),
+            },
+            lambda ctx, args: api.move_all(ctx, ListName(args["to"]), ListName(args.get("from", ListName.LATER))),
+        ),
+        tool(
             "complete_all",
             "Complete everything on the shopping list, optionally except the items named. "
             "This is the 'got everything except the sausages' case.",

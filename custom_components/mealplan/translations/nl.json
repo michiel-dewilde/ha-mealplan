@@ -202,6 +202,15 @@
         "to": { "name": "Naar lijst", "description": "Waar het terecht moet komen." }
       }
     },
+    "move_all": {
+      "name": "Een hele lijst verplaatsen",
+      "description": "Verplaatst alles wat nog openstaat van de ene lijst naar de andere — \"de volgende beurt is nu deze beurt\". Altijd iets wat iemand indrukt; nooit een datum of een omslagdag.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "to": { "name": "Naar lijst", "description": "Waar het allemaal terecht moet komen." },
+        "from": { "name": "Van lijst", "description": "Welke lijst leeggemaakt wordt. Standaard de volgende beurt." }
+      }
+    },
     "set_expiry": {
       "name": "Vervaldatum zetten",
       "description": "Noteert wanneer iets in huis vervalt.",
