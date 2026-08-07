@@ -172,6 +172,31 @@ move_item:
             - later
             - stock
 
+move_all:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    to:
+      required: true
+      selector:
+        select:
+          translation_key: list_name
+          options:
+            - shopping
+            - later
+            - stock
+    from:
+      default: later
+      selector:
+        select:
+          translation_key: list_name
+          options:
+            - shopping
+            - later
+            - stock
+
 set_expiry:
   fields:
     entry_id:

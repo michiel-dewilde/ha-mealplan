@@ -26,6 +26,7 @@ from .const import (
     ATTR_ENTRY_ID,
     ATTR_EXCEPT_ITEMS,
     ATTR_EXPIRY,
+    ATTR_FROM,
     ATTR_INCLUDE_COMPLETED,
     ATTR_INCLUDE_PANTRY,
     ATTR_INGREDIENTS,
@@ -59,6 +60,7 @@ from .const import (
     SERVICE_IMPORT_KNOWLEDGE,
     SERVICE_LEARN_DISH,
     SERVICE_LIST_DISHES,
+    SERVICE_MOVE_ALL,
     SERVICE_MOVE_ITEM,
     SERVICE_PLAN_MENU,
     SERVICE_PRINT_LIST,
@@ -291,6 +293,26 @@ def async_setup_services(hass: HomeAssistant) -> None:
             {
                 vol.Required(ATTR_ITEM): cv.string,
                 vol.Required(ATTR_TO): vol.In([str(name) for name in ListName]),
+            }
+        ),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    async def handle_move_all(call: ServiceCall) -> ServiceResponse:
+        return api.move_all(
+            _ctx(hass, call),
+            ListName(call.data[ATTR_TO]),
+            ListName(call.data.get(ATTR_FROM, ListName.LATER)),
+        )
+
+    register(
+        DOMAIN,
+        SERVICE_MOVE_ALL,
+        handle_move_all,
+        schema=_schema(
+            {
+                vol.Required(ATTR_TO): vol.In([str(name) for name in ListName]),
+                vol.Optional(ATTR_FROM, default=str(ListName.LATER)): vol.In([str(name) for name in ListName]),
             }
         ),
         supports_response=SupportsResponse.OPTIONAL,
