@@ -293,6 +293,37 @@ class MealPlanStore:
                 added += 1
         return added
 
+    def checks_on(self, day: date, round_name: str) -> list[Event]:
+        """Return the answers given during one round on one day."""
+        return [
+            event
+            for event in self.data.events
+            if event.kind == EventKind.CHECKED and event.on == day and event.detail.get("round") == round_name
+        ]
+
+    def forget_checks(self, day: date, round_name: str) -> int:
+        """Withdraw one day's answers to one round, and say how many went.
+
+        Deleting rather than marking withdrawn, and deliberately: every reader
+        of the history asks "when was this last answered", and an answer that
+        has been taken back must not answer that question. A tombstone would
+        have to be skipped by each of them, forever, so that the record could
+        show a round that — as far as the household is concerned — never
+        happened.
+
+        Only today's, and only this round's. Yesterday's cupboard round is
+        history; this morning's mis-taps are not.
+        """
+        doomed = {id(event) for event in self.checks_on(day, round_name)}
+        if not doomed:
+            return 0
+        self.data.events = [event for event in self.data.events if id(event) not in doomed]
+        return len(doomed)
+
+    def last_checked(self, name: str) -> date | None:
+        """Return when this article was last looked at during a round."""
+        return self.last_event(EventKind.CHECKED, article=name)
+
     def last_listed(self, name: str) -> date | None:
         """Return the most recent day this article went onto a list.
 
@@ -334,9 +365,21 @@ class MealPlanStore:
         article = self.article(name)
         return self.cadence_days(name) is not None or bool(article and article.staple)
 
+    def last_answer(self, name: str) -> date | None:
+        """Return the last day the question "do we still have this?" got an answer.
+
+        Two ways to answer it, and they are worth the same: buying the thing,
+        and standing at the cupboard and seeing that there is plenty. Before
+        this, only the first counted, so "still enough" silenced an article
+        until the next redraw and it was back the day after — which is
+        forgetting, not answering.
+        """
+        days = [day for day in (self.last_listed(name), self.last_checked(name)) if day is not None]
+        return max(days) if days else None
+
     def is_due(self, name: str, today: date) -> bool:
         """Return whether a recurring pantry article is due by its own cadence."""
-        last = self.last_listed(name)
+        last = self.last_answer(name)
         if last is None or not self.recurs(name):
             return False
         cadence = self.cadence_days(name) or DEFAULT_PANTRY_CADENCE_DAYS
@@ -496,7 +539,24 @@ class MealPlanStore:
         self.items(list_name).append(item)
         return item
 
-    def complete_item(self, list_name: ListName | str, item: ListItem, today: date) -> None:
+    def last_shopped(self, store: str) -> date | None:
+        """Return when something was last bought at a store.
+
+        The only trace a shop leaves: it rides along on every purchase, because
+        the store you were standing in is a fact about that purchase and not a
+        setting. It is what puts the shop you use most at the front of the
+        chips instead of the shop whose name starts with an A.
+        """
+        days = [
+            event.on
+            for event in self.data.events
+            if event.kind == EventKind.BOUGHT and event.detail.get("store") == store
+        ]
+        return max(days) if days else None
+
+    def complete_item(
+        self, list_name: ListName | str, item: ListItem, today: date, *, store: str | None = None
+    ) -> None:
         """Tick an item off, and write down what that means for this list.
 
         Ticking off a shopping item means it was bought — which until now was
@@ -519,6 +579,7 @@ class MealPlanStore:
             dish=item.dish,
             list=str(list_name),
             due=item.due.isoformat() if item.due else None,
+            store=None if stock else store,
         )
 
     def remove_items(self, list_name: ListName | str, uids: Iterable[str], today: date | None = None) -> None:
@@ -540,6 +601,21 @@ class MealPlanStore:
                         list=str(list_name),
                     )
         self.data.lists[str(list_name)] = [item for item in items if item.uid not in doomed]
+
+    def move_item(self, item: ListItem, from_list: ListName | str, to_list: ListName | str) -> ListItem:
+        """Move one item from one list to another, as the same item.
+
+        No event is written and `added_on` is left alone. Moving something from
+        next trip to this trip is not a second decision to buy it — it is the
+        same decision, arriving. Recording it as a fresh listing would inflate
+        every cadence by however often the household changes its mind about
+        which trip something belongs to.
+        """
+        source = self.items(from_list)
+        if item in source:
+            source.remove(item)
+        self.items(to_list).append(item)
+        return item
 
     def sort_list(self, list_name: ListName | str, store: str | None) -> None:
         """Reorder the open items into the walking route of a store.

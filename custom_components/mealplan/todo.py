@@ -135,7 +135,9 @@ class MealPlanTodoList(MealPlanEntity, TodoListEntity):
             stored.summary = item.summary.strip()
         if item.status is not None:
             if item.status == TodoItemStatus.COMPLETED:
-                self._store.complete_item(self._list_name, stored, self._today)
+                self._store.complete_item(
+                    self._list_name, stored, self._today, store=self._entry.runtime_data.store_choice
+                )
             else:
                 stored.completed = False
         stored.due = _as_date(item.due)

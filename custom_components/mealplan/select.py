@@ -55,8 +55,20 @@ class StoreSelect(MealPlanEntity, SelectEntity, RestoreEntity):
 
     @property
     def options(self) -> list[str]:
-        """Return the stores this installation knows about."""
-        return sorted(self._store.data.stores)
+        """Return the stores this installation knows about, most recently shopped first.
+
+        This is a list you grab from at the door of a shop, not one you look
+        something up in, so the shop you were in last week comes before the one
+        whose name starts with an A. Stores nobody has bought anything at yet
+        fall to the back, in alphabetical order among themselves.
+        """
+        store = self._store
+        alphabetical = sorted(store.data.stores)
+        return sorted(
+            alphabetical,
+            key=lambda name: last.toordinal() if (last := store.last_shopped(name)) else 0,
+            reverse=True,
+        )
 
     @property
     def current_option(self) -> str | None:

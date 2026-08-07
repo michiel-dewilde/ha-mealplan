@@ -63,15 +63,19 @@ const STRINGS = {
     next_week: "Next week",
     exact: "Date",
     now: "This trip",
-    now_short: "Buy",
-    later_short: "Later",
+    enough: "Still enough",
+    gone: "Gone",
+    to_later: "→ next trip",
+    on_this_trip: "{x} · on this trip",
+    all_checked: "Everything checked",
+    again: "Start again",
     on_list: "On the list",
-    keep: "Have it",
     more: "{n} more",
     reason_cadence: "due again",
     reason_no_history: "not seen yet",
     reason_menu: "on the menu",
     last_listed: "last {d}",
+    last_checked: "checked {d}",
     today: "today",
     expired: "past",
     in_days: "in {n} d",
@@ -125,15 +129,19 @@ const STRINGS = {
     next_week: "Volgende week",
     exact: "Datum",
     now: "Deze beurt",
-    now_short: "Nu",
-    later_short: "Later",
+    enough: "Nog genoeg",
+    gone: "Op",
+    to_later: "→ volgende beurt",
+    on_this_trip: "{x} · op deze beurt",
+    all_checked: "Alles nagekeken",
+    again: "Opnieuw",
     on_list: "Staat erop",
-    keep: "Nog ok",
     more: "nog {n}",
     reason_cadence: "weer toe",
     reason_no_history: "nog niet gezien",
     reason_menu: "op het menu",
     last_listed: "laatst {d}",
+    last_checked: "nagekeken {d}",
     today: "vandaag",
     expired: "voorbij",
     in_days: "over {n} d",
@@ -464,12 +472,21 @@ class MealplanMenuCard extends MealplanCard {
   }
 
   /** The eight dishes this household eats most cover about four days in five.
-   *  They are one tap; everything else is a tap and some typing. */
+   *  They are one tap; everything else is a tap and some typing.
+   *
+   *  Which eight is a question of frequency; the order they come in is not.
+   *  This is a row you grab from, so the one that was on the table last week is
+   *  in front — the alphabet is for the field underneath, where you already
+   *  know the name you are looking for. */
   frequent() {
     const known = this.attrs.dishes || [];
-    const ranked = (this._dishStats || []).slice().sort((a, b) => b.times - a.times);
-    const top = ranked.map((d) => d.name).filter((name) => known.includes(name));
-    return (top.length ? top : known).slice(0, 8);
+    const stats = (this._dishStats || []).filter((d) => known.includes(d.name));
+    const top = stats
+      .slice()
+      .sort((a, b) => b.times - a.times)
+      .slice(0, 8);
+    top.sort((a, b) => String(b.last || "").localeCompare(String(a.last || "")));
+    return top.length ? top.map((d) => d.name) : known.slice(0, 8);
   }
 
   renderSheet() {
@@ -738,7 +755,28 @@ class MealplanRoundCard extends MealplanCard {
   font-size: 13px; white-space: nowrap;
 }
 .row .btns button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: transparent; }
+/* Two answers to one question, so two buttons of the same weight. Neither is
+   filled: a filled button among unfilled ones reads as the state something is
+   already in, which is how "Nu" came to look like a label rather than an act.
+   "Gone" is the one with consequences, so it is tinted, not filled. */
+.row .btns button.gone { color: var(--primary-color); border-color: var(--primary-color); }
 .row.listed { opacity: .5; }
+.top { display: flex; padding: 8px 16px 0; }
+.top button {
+  min-height: 34px; padding: 0 12px; border-radius: 9px; font-size: 13px;
+  border: 1px solid var(--divider-color); margin-left: auto;
+}
+/* What just happened, and the one way to take it back. Sits where the row was,
+   long enough to notice and not long enough to be in the way. */
+.flash {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 16px; background: var(--secondary-background-color);
+  border-top: 1px solid var(--divider-color); font-size: 14px;
+}
+.flash button {
+  margin-left: auto; min-height: 34px; padding: 0 12px; border-radius: 9px;
+  border: 1px solid var(--divider-color); font-size: 13px; white-space: nowrap;
+}
 .badge { font-size: 12px; padding: 4px 8px; border-radius: 999px; background: var(--secondary-background-color); }
 .badge.urgent { background: var(--error-color, #db4437); color: #fff; }
 .dates { padding: 8px 16px 12px; background: var(--secondary-background-color); border-top: 1px solid var(--divider-color); }
@@ -753,11 +791,16 @@ class MealplanRoundCard extends MealplanCard {
     super.setConfig(config);
     this._mode = this._config.mode || "fridge";
     this._scope = this._config.scope || "general";
-    this._dismissed = new Set();
+  }
+
+  /** How many answers today's round already holds. What makes "start again"
+   *  appear only when there is something to take back. */
+  get answered() {
+    return this.attrs.checked_today?.[this._mode] || 0;
   }
 
   init() {
-    this._card.innerHTML = `<header><h1></h1></header><div class="body"></div><div class="foot"></div>`;
+    this._card.innerHTML = `<header><h1></h1></header><div class="top"></div><div class="body"></div><div class="foot"></div>`;
     this._card.addEventListener("click", (event) => this.onClick(event));
     this._card.addEventListener("change", (event) => {
       if (event.target.classList.contains("exact")) this.pick(event.target.value);
@@ -773,7 +816,10 @@ class MealplanRoundCard extends MealplanCard {
   async load() {
     if (this._mode === "pantry") {
       const data = await this.call("get_pantry_check", { scope: this._scope }, true);
-      this._items = (data?.articles || []).filter((a) => !this._dismissed.has(a.article));
+      // No local list of dismissed rows any more: an answer is stored, so what
+      // drops out of the round drops out because the integration says so, and
+      // it is still gone after a refresh.
+      this._items = data?.articles || [];
     } else {
       const data = await this.call("get_list", { list: "stock" }, true);
       const items = (data?.groups || []).flatMap((group) => group.items);
@@ -785,30 +831,51 @@ class MealplanRoundCard extends MealplanCard {
     this.render();
   }
 
+  /** "Start again", above the round, only once there is an answer to withdraw. */
+  renderTop() {
+    this._card.querySelector(".top").innerHTML = this.answered
+      ? `<button data-act="reset">${escapeHtml(this.t("again"))}</button>`
+      : "";
+  }
+
+  /** What has just been put on the list, with the one way to take it back. */
+  flashRow() {
+    if (!this._flash) return "";
+    return `<div class="flash">
+      <span>${escapeHtml(this.t("on_this_trip", { x: this._flash }))}</span>
+      <button data-act="tolater" data-article="${escapeHtml(this._flash)}">${escapeHtml(this.t("to_later"))}</button>
+    </div>`;
+  }
+
   render() {
     const today = todayISO();
     const body = this._card.querySelector(".body");
+    this.renderTop();
     if (this._mode === "pantry") {
       body.innerHTML =
         `<div class="scope">
           <button class="chip${this._scope === "general" ? " on" : ""}" data-act="scope" data-scope="general">${escapeHtml(this.t("scope_general"))}</button>
           <button class="chip${this._scope === "menu" ? " on" : ""}" data-act="scope" data-scope="menu">${escapeHtml(this.t("scope_menu"))}</button>
         </div>` +
+        this.flashRow() +
         (this._items?.length
           ? this._items
               .map(
                 (item) => `<div class="row${item.already_listed ? " listed" : ""}">
                   <span class="name">${escapeHtml(item.article)}<small>${escapeHtml(this.why(item))}</small></span>
                   <span class="btns">
-                    <button class="primary" data-act="low" data-article="${escapeHtml(item.article)}" data-when="now">${escapeHtml(this.t("now_short"))}</button>
-                    <button data-act="low" data-article="${escapeHtml(item.article)}" data-when="later">${escapeHtml(this.t("later_short"))}</button>
-                    <button data-act="keep" data-article="${escapeHtml(item.article)}">${escapeHtml(this.t("keep"))}</button>
+                    <button data-act="enough" data-article="${escapeHtml(item.article)}">${escapeHtml(this.t("enough"))}</button>
+                    <button class="gone" data-act="gone" data-article="${escapeHtml(item.article)}">${escapeHtml(this.t("gone"))}</button>
                   </span>
                 </div>`,
               )
               .join("")
           : `<div class="pad muted">${escapeHtml(this.t("nothing_to_check"))}</div>`);
-      this._card.querySelector(".foot").innerHTML = this.errorLine();
+      this._card.querySelector(".foot").innerHTML =
+        this.errorLine() +
+        (this._items?.length
+          ? `<div class="actions"><button data-act="all">${escapeHtml(this.t("all_checked"))}</button></div>`
+          : "");
       return;
     }
 
@@ -828,10 +895,12 @@ class MealplanRoundCard extends MealplanCard {
                     : left === 0
                       ? this.t("today")
                       : this.t("in_days", { n: left });
+              // A tick says "done" and nothing about what happened; the word
+              // says it. This one means the thing is out of the house.
               return `<div class="row">
                 <span class="name">${escapeHtml(item.summary)}</span>
                 <button class="badge${left !== null && left <= 2 ? " urgent" : ""}" data-act="date" data-article="${escapeHtml(item.summary)}">${escapeHtml(badge)}</button>
-                <span class="btns"><button data-act="tick" data-uid="${escapeHtml(item.uid)}">✓</button></span>
+                <span class="btns"><button class="gone" data-act="used" data-article="${escapeHtml(item.summary)}">${escapeHtml(this.t("gone"))}</button></span>
               </div>`;
             })
             .join("")
@@ -845,7 +914,14 @@ class MealplanRoundCard extends MealplanCard {
              .join("")}</div>` : ""}`
         : "");
 
-    this._card.querySelector(".foot").innerHTML = this.errorLine() + (this._picking ? this.datePicker() : "");
+    // Here "everything checked" means the dates still hold, not that the fridge
+    // is empty. Same rhythm as the cupboard round, different content.
+    this._card.querySelector(".foot").innerHTML =
+      this.errorLine() +
+      (this._picking ? this.datePicker() : "") +
+      (this._items?.length
+        ? `<div class="actions"><button data-act="all">${escapeHtml(this.t("all_checked"))}</button></div>`
+        : "");
   }
 
   /** Why this article is being asked about, and when it last went on a list.
@@ -855,7 +931,13 @@ class MealplanRoundCard extends MealplanCard {
   why(item) {
     if (item.already_listed) return this.t("on_list");
     const parts = [this.t(`reason_${item.reason}`)];
-    if (item.last_listed) parts.push(this.t("last_listed", { d: this.fmt(item.last_listed, { day: "numeric", month: "short" }) }));
+    // Whichever answer came last is the one that says something. "Checked
+    // 3 Aug" and "last 22 Feb" are different reasons to believe the row.
+    const checked = item.last_checked && (!item.last_listed || item.last_checked >= item.last_listed);
+    const date = checked ? item.last_checked : item.last_listed;
+    if (date) {
+      parts.push(this.t(checked ? "last_checked" : "last_listed", { d: this.fmt(date, { day: "numeric", month: "short" }) }));
+    }
     return parts.join(" · ");
   }
 
@@ -887,21 +969,21 @@ class MealplanRoundCard extends MealplanCard {
       this._scope = target.dataset.scope;
       this.load();
     }
-    if (action === "low") {
-      this.call("running_low", { article: target.dataset.article, when: target.dataset.when }).then(() => this.load());
-    }
-    if (action === "keep") {
-      this._dismissed.add(target.dataset.article);
-      this.load();
-    }
+    if (action === "enough") this.answer(target.dataset.article, true);
+    if (action === "gone") this.answer(target.dataset.article, false);
+    if (action === "used") this.answer(target.dataset.article, false);
+    if (action === "all") this.answerAll();
+    if (action === "reset") this.call("reset_round", { round: this._mode }).then(() => this.load());
+    if (action === "tolater") this.toLater(target.dataset.article);
     if (action === "pool") {
       this._showPool = !this._showPool;
       this.render();
     }
-    if (action === "tick") this.tick(target.dataset.uid);
     if (action === "date") {
       this._picking = target.dataset.article;
-      this._card.querySelector(".foot").innerHTML = this.datePicker();
+      // Through render, not straight into the foot: the foot also carries
+      // "everything checked", and writing over it would take that away.
+      this.render();
       this._card.querySelector(".dates").scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
     if (action === "pick") this.pick(target.dataset.date);
@@ -914,10 +996,33 @@ class MealplanRoundCard extends MealplanCard {
     this.load();
   }
 
-  async tick(uid) {
-    const entity = this.attrs.entities?.stock;
-    if (!entity) return;
-    await this._hass.callService("todo", "update_item", { item: uid, status: "completed" }, { entity_id: entity });
+  /** One answer to the round's one question. "Gone" carries its own
+   *  consequence — onto the list, or out of the house — so the tap does the
+   *  whole thing rather than leaving half of it to a second tap. */
+  async answer(article, enough) {
+    await this.call("check_off", { articles: [article], enough, round: this._mode });
+    // Only the cupboard round needs the way back: at the fridge the row simply
+    // goes, which is feedback enough.
+    if (!enough && this._mode === "pantry") {
+      this._flash = article;
+      clearTimeout(this._flashTimer);
+      this._flashTimer = setTimeout(() => {
+        this._flash = null;
+        this.render();
+      }, 6000);
+    }
+    this.load();
+  }
+
+  async answerAll() {
+    await this.call("check_off", { round: this._mode, scope: this._scope });
+    this.load();
+  }
+
+  async toLater(article) {
+    this._flash = null;
+    clearTimeout(this._flashTimer);
+    await this.call("move_item", { item: article, to: "later" });
     this.load();
   }
 

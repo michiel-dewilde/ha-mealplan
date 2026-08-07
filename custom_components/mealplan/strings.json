@@ -84,6 +84,12 @@
         "menu": "For the planned menu"
       }
     },
+    "round": {
+      "options": {
+        "pantry": "Cupboard round",
+        "fridge": "Fridge round"
+      }
+    },
     "list_name": {
       "options": {
         "shopping": "Shopping list",
@@ -165,6 +171,35 @@
         "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
         "departments": { "name": "Departments", "description": "Department keys, in walking order. Any left out keep their order at the end." },
         "store": { "name": "Store", "description": "Defaults to the selected store." }
+      }
+    },
+    "check_off": {
+      "name": "Answer a round",
+      "description": "Records what a round found: still enough, or run out. \"Run out\" puts it on the list straight away, or ticks it out of the house on the fridge round. Leaving the articles empty answers the whole round at once.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "articles": { "name": "Articles", "description": "What was looked at. Leave empty to answer everything the round is asking about." },
+        "enough": { "name": "Still enough", "description": "On for still enough, off for run out." },
+        "round": { "name": "Round", "description": "The cupboard round or the fridge round." },
+        "scope": { "name": "Scope", "description": "Which cupboard round is being answered when no articles are named." },
+        "when": { "name": "Which trip", "description": "Where a run-out article goes: this trip, or the next one." }
+      }
+    },
+    "reset_round": {
+      "name": "Start a round again",
+      "description": "Withdraws today's answers to a round, so everything is asked again. What the answers put on the list stays there.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "round": { "name": "Round", "description": "The cupboard round or the fridge round." }
+      }
+    },
+    "move_item": {
+      "name": "Move an item",
+      "description": "Moves something from one list to another. Not a new listing: it is the same item, on a different list.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "item": { "name": "Item", "description": "What to move, by name or by uid." },
+        "to": { "name": "To list", "description": "Where it should end up." }
       }
     },
     "set_expiry": {
@@ -312,6 +347,8 @@
     "unknown_entry": { "message": "There is no meal plan with id {entry_id}." },
     "no_meal_plan": { "message": "No meal plan is set up." },
     "no_store": { "message": "No store is selected, so there is nothing to record a walking route for." },
+    "unknown_item": { "message": "There is nothing called \"{item}\" on any list." },
+    "check_off_needs_articles": { "message": "Say which articles have run out. Only \"still enough\" can answer a whole round at once." },
     "ambiguous_meal_plan": { "message": "There is more than one meal plan. Say which one." },
     "undated_stock_disabled": { "message": "Stock items without an expiry date are switched off for this meal plan." },
     "unsupported_schema": { "message": "This knowledge file uses schema {schema}; this version reads {expected}." }

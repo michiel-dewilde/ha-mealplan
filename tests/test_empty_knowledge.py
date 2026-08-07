@@ -103,7 +103,7 @@ async def test_suggestions_degrade_gracefully(hass: HomeAssistant, entry: MockCo
     result = await call(hass, "suggest_menu")
     assert all(day["candidates"] == [] for day in result["suggestions"])
 
-    assert await call(hass, "get_pantry_check") == {"scope": "general", "articles": []}
+    assert await call(hass, "get_pantry_check") == {"scope": "general", "checked_today": 0, "articles": []}
     assert (await call(hass, "get_expiring"))["articles"] == []
 
 
