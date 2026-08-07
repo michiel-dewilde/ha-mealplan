@@ -23,7 +23,7 @@ async def call(hass: HomeAssistant, service: str, data: dict[str, Any] | None = 
 
 async def test_import_seeds_everything(hass: HomeAssistant, entry: MockConfigEntry, knowledge: dict[str, Any]):
     result = await call(hass, "import_knowledge", {"knowledge": knowledge})
-    assert result == {"departments": 13, "stores": 1, "articles": 4, "dishes": 2}
+    assert result == {"departments": 13, "stores": 1, "articles": 4, "dishes": 2, "kept_manual": []}
 
     store = entry.runtime_data.store
     assert store.data.stores["Corner Market"].department_order == ["produce", "butcher", "dry_goods"]
@@ -147,3 +147,50 @@ async def test_import_places_articles_that_were_typed_before_they_were_known(
 
     assert store.article("lime").department == "produce", "the unclassified one is placed"
     assert store.article("salt").department == "dry_goods", "the classified one is left alone"
+
+
+async def test_import_never_overwrites_what_was_placed_by_hand(
+    hass: HomeAssistant, entry: MockConfigEntry, knowledge: dict[str, Any]
+):
+    """A file is an opinion; `manual` is a decision.
+
+    Without this, every regenerated knowledge base silently undoes the work done
+    in the management screen — and silently is the worst way to lose it.
+    """
+    store = entry.runtime_data.store
+    await call(hass, "import_knowledge", {"knowledge": knowledge})
+
+    await call(
+        hass,
+        "learn_article",
+        {"article": "rice", "department": "produce", "staple": False, "availability": "Big Barn"},
+    )
+    assert store.article("rice").department == "produce"
+
+    result = await call(hass, "import_knowledge", {"knowledge": knowledge})
+
+    assert store.article("rice").department == "produce", "the file does not win"
+    assert store.article("rice").availability == "Big Barn"
+    assert store.article("rice").staple is False
+    assert result["kept_manual"] == ["rice"], "and it says so rather than pretending it imported"
+    assert store.article("tomatoes").department == "produce", "everything else is imported as usual"
+
+
+async def test_a_protected_article_still_takes_the_higher_counts(
+    hass: HomeAssistant, entry: MockConfigEntry, knowledge: dict[str, Any]
+):
+    """Protecting a decision is not the same as freezing the history.
+
+    The department is the user's; how often the article has been bought and when
+    it was last seen are measurements, and a seeded file may know more of them
+    than this installation has lived through.
+    """
+    store = entry.runtime_data.store
+    await call(hass, "learn_article", {"article": "rice", "department": "produce"})
+    assert store.article("rice").times == 0
+
+    await call(hass, "import_knowledge", {"knowledge": knowledge})
+
+    assert store.article("rice").department == "produce", "still theirs"
+    assert store.article("rice").times == 6, "but the count comes along"
+    assert store.article("rice").last_listed.isoformat() == "2026-06-01"

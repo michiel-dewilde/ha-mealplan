@@ -29,6 +29,11 @@ def import_knowledge(store: MealPlanStore, payload: dict[str, Any], *, replace: 
     holds for the department list in particular: it is user data from the moment
     it is first seeded, and importing a file that never mentions `pet` does not
     delete `pet`.
+
+    With one exception, and it is the important one: an article someone placed
+    by hand is never overwritten. `department_source: manual` is a decision, and
+    a file is an opinion. The response lists what was kept, under `kept_manual`,
+    so an import that ignored part of its own payload says so out loud.
     """
     schema = str(payload.get("schema") or "")
     if schema and not schema.startswith("2."):
@@ -54,10 +59,23 @@ def import_knowledge(store: MealPlanStore, payload: dict[str, Any], *, replace: 
     for name, raw in (payload.get("stores") or {}).items():
         data.stores[str(name)] = StoreOrder.from_dict(raw)
 
+    kept: list[str] = []
     for raw in payload.get("articles") or []:
         article = Article.from_dict(raw)
-        # A live count that has grown past the seeded one is the truer number.
         existing = data.articles.get(article.name)
+        # What someone placed by hand outranks any file. Without this, every
+        # regenerated knowledge base silently undoes the work done in the
+        # management screen — and silently is the worst way to lose it.
+        if existing is not None and existing.department_source == DepartmentSource.MANUAL:
+            existing.times = max(article.times, existing.times)
+            existing.cadence_days = existing.cadence_days or article.cadence_days
+            existing.last_listed = max(
+                (day for day in (existing.last_listed, article.last_listed) if day is not None),
+                default=None,
+            )
+            kept.append(article.name)
+            continue
+        # A live count that has grown past the seeded one is the truer number.
         if existing is not None:
             article.times = max(article.times, existing.times)
             article.expiry_seen = article.expiry_seen or existing.expiry_seen
@@ -80,6 +98,7 @@ def import_knowledge(store: MealPlanStore, payload: dict[str, Any], *, replace: 
         "stores": len(data.stores),
         "articles": len(data.articles),
         "dishes": len(data.dishes),
+        "kept_manual": sorted(kept),
     }
 
 

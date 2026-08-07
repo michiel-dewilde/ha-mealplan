@@ -1,0 +1,72 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!--
+  The Meal Plan brand icon: a sheet of paper with a week of lines on it, and a
+  fork and knife laid across it.
+
+  It is a sheet, not a calendar, because that is what this integration grew out
+  of — a handwritten weekly menu and shopping list, photographed and shared. Two
+  of the five rules are short and pale: an empty day is a normal state, and that
+  is worth saying even here.
+
+  Drawn by hand rather than generated, and checked at 24, 32, 64 and 128 pixels.
+  Three things follow from that check and should survive any edit:
+
+  * the head band is solid colour, not a hairline rule — at 24px a one-pixel
+    line is nothing, but a band is a silhouette;
+  * it is warm, because this sits in a Home Assistant sidebar full of blue, and
+    food is not blue;
+  * there is no drop shadow. A hard offset rectangle reads as a second sheet
+    behind the first, and `home-assistant/brands` wants the artwork trimmed.
+-->
+<!-- The viewBox is trimmed to the artwork and squared: `home-assistant/brands`
+     wants a square image without a transparent margin around it. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 18 476 476" width="476" height="476">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e6ebf2"/>
+    </linearGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2886d"/>
+      <stop offset="1" stop-color="#df5346"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4a5d72"/>
+      <stop offset="1" stop-color="#232e3a"/>
+    </linearGradient>
+    <clipPath id="sheet">
+      <rect x="26" y="18" width="460" height="476" rx="46"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#sheet)">
+    <rect x="26" y="18" width="460" height="476" fill="url(#paper)"/>
+    <rect x="26" y="18" width="460" height="86" fill="url(#band)"/>
+    <g fill="#ffffff" opacity=".92">
+      <circle cx="118" cy="61" r="13"/>
+      <circle cx="256" cy="61" r="13"/>
+      <circle cx="394" cy="61" r="13"/>
+    </g>
+  </g>
+
+  <g stroke="#8fa0b4" stroke-width="21" stroke-linecap="round">
+    <path d="M80 172h188"/>
+    <path d="M80 238h232"/>
+    <path d="M80 304h130" opacity=".34"/>
+    <path d="M80 370h210"/>
+    <path d="M80 436h110" opacity=".34"/>
+  </g>
+
+  <!-- Fork and knife, tilted so they read as objects lying on the paper rather
+       than as something printed on it. Built from rectangles and one curve
+       apiece: shapes that stay themselves when the renderer has 24 pixels. -->
+  <g transform="rotate(15 330 320)" fill="url(#steel)">
+    <rect x="300" y="194" width="15" height="74" rx="7.5"/>
+    <rect x="322" y="194" width="15" height="74" rx="7.5"/>
+    <rect x="344" y="194" width="15" height="74" rx="7.5"/>
+    <path d="M290 256a6 6 0 0 1 6-6h67a6 6 0 0 1 6 6v26c0 22-13 36-28 40v108a11.5 11.5 0 0 1-23 0V322c-15-4-28-18-28-40z"/>
+
+    <path d="M414 192c16 30 18 78 8 114l-30 4c-5-42 4-92 22-118z"/>
+    <rect x="392" y="298" width="23" height="144" rx="11.5"/>
+  </g>
+</svg>
