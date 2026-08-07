@@ -31,6 +31,7 @@
     "import_knowledge": "mdi:database-import-outline",
     "export_knowledge": "mdi:database-export-outline",
     "get_week": "mdi:calendar-week",
+    "get_history": "mdi:history",
     "get_list": "mdi:format-list-checks",
     "list_dishes": "mdi:format-list-bulleted",
     "get_pantry_check": "mdi:cupboard-outline",

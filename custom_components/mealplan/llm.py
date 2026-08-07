@@ -23,7 +23,7 @@ from homeassistant.util.json import JsonObjectType
 import voluptuous as vol
 
 from . import api
-from .const import DOMAIN, ListName, PantryScope, When
+from .const import DOMAIN, EventKind, ListName, PantryScope, When
 from .knowledge import export_knowledge
 from .options import plan_options
 from .types import MealPlanConfigEntry
@@ -90,6 +90,34 @@ def _tools(entry: MealPlanConfigEntry) -> list[llm.Tool]:
             "pantry ingredients.",
             {},
             lambda ctx, args: api.list_dishes(ctx),
+        ),
+        tool(
+            "get_history",
+            "Read what has actually happened in this household: what went onto a list, "
+            "what was bought, what was eaten, what was checked during a round. Most "
+            "recent first. Without filters it returns the whole history a page at a time "
+            "— the response carries `total`, `returned` and `offset`, so ask again with a "
+            "higher offset to walk through all of it. With filters it answers the "
+            "everyday question: when did we last buy coffee, how often did we have tacos.",
+            {
+                vol.Optional("since"): str,
+                vol.Optional("until"): str,
+                vol.Optional("article"): str,
+                vol.Optional("dish"): str,
+                vol.Optional("kind"): vol.In([str(kind) for kind in EventKind]),
+                vol.Optional("limit"): vol.All(vol.Coerce(int), vol.Range(min=1, max=api.MAX_HISTORY_LIMIT)),
+                vol.Optional("offset"): vol.All(vol.Coerce(int), vol.Range(min=0)),
+            },
+            lambda ctx, args: api.get_history(
+                ctx,
+                since=dt_util.parse_date(args["since"]) if args.get("since") else None,
+                until=dt_util.parse_date(args["until"]) if args.get("until") else None,
+                article=args.get("article"),
+                dish=args.get("dish"),
+                kind=EventKind(args["kind"]) if args.get("kind") else None,
+                limit=args.get("limit", api.DEFAULT_HISTORY_LIMIT),
+                offset=args.get("offset", 0),
+            ),
         ),
         tool(
             "get_list",

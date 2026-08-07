@@ -91,6 +91,17 @@
         "stock": "In huis"
       }
     },
+    "event_kind": {
+      "options": {
+        "listed": "Op een lijst gezet",
+        "unlisted": "Eraf gehaald zonder te kopen",
+        "bought": "Gekocht",
+        "eaten": "Gegeten",
+        "checked": "Nagekeken tijdens een ronde",
+        "stocked": "Genoteerd als in huis",
+        "used": "Opgebruikt"
+      }
+    },
     "shelf_life": {
       "options": {
         "important": "Belangrijk — volg van bij het kopen",
@@ -236,6 +247,20 @@
       "fields": {
         "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
         "start": { "name": "Begin", "description": "Standaard het lopende planningsvenster." }
+      }
+    },
+    "get_history": {
+      "name": "Geschiedenis opvragen",
+      "description": "Geeft terug wat er gebeurd is — op de lijst gezet, gekocht, gegeten, nagekeken — meest recente eerst. Zonder filters de hele geschiedenis, pagina per pagina.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "since": { "name": "Vanaf", "description": "Alleen gebeurtenissen op of na deze dag." },
+        "until": { "name": "Tot", "description": "Alleen gebeurtenissen op of vóór deze dag." },
+        "article": { "name": "Artikel", "description": "Alleen wat er met dit artikel gebeurde." },
+        "dish": { "name": "Gerecht", "description": "Alleen wat er met dit gerecht gebeurde." },
+        "kind": { "name": "Soort", "description": "Alleen één soort gebeurtenis." },
+        "limit": { "name": "Hoeveel", "description": "Gebeurtenissen per pagina. Standaard 200." },
+        "offset": { "name": "Overslaan", "description": "Hoeveel er overgeslagen worden — samen met het totaal loop je zo alles door." }
       }
     },
     "get_list": {

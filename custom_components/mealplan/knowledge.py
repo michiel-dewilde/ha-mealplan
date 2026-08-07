@@ -18,7 +18,7 @@ from typing import Any
 from homeassistant.exceptions import ServiceValidationError
 
 from .const import DOMAIN, KNOWLEDGE_SCHEMA, UNKNOWN_DEPARTMENT, DepartmentSource, ShelfLife
-from .models import Article, Department, Dish, StoreOrder
+from .models import Article, Department, Dish, Event, StoreOrder
 from .store import MealPlanStore
 
 
@@ -85,6 +85,14 @@ def import_knowledge(store: MealPlanStore, payload: dict[str, Any], *, replace: 
         dish = Dish.from_dict(raw)
         data.dishes[dish.name] = dish
         _adopt_ingredient_articles(store, dish)
+
+    # History is merged, never replaced: an export taken yesterday must not
+    # erase what happened since. Identical events are dropped so that importing
+    # the same file twice does not double the household's past.
+    if incoming := [event for event in (Event.from_dict(raw) for raw in payload.get("events") or []) if event]:
+        seen = {(e.kind, e.on, e.article, e.dish) for e in data.events}
+        data.events += [e for e in incoming if (e.kind, e.on, e.article, e.dish) not in seen]
+        data.events.sort(key=lambda event: event.on)
 
     data.source = {
         "schema": schema or KNOWLEDGE_SCHEMA,
@@ -167,4 +175,5 @@ def export_knowledge(store: MealPlanStore, today: date) -> dict[str, Any]:
         "dishes": dishes,
         "plan": {day.isoformat(): entry.to_dict() for day, entry in sorted(store.data.plan.items())},
         "listings": [item.to_dict() for item in store.data.listings],
+        "events": [event.to_dict() for event in store.data.events],
     }

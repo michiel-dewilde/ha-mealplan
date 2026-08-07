@@ -91,6 +91,17 @@
         "stock": "In the house"
       }
     },
+    "event_kind": {
+      "options": {
+        "listed": "Went onto a list",
+        "unlisted": "Came off without being bought",
+        "bought": "Bought",
+        "eaten": "Eaten",
+        "checked": "Checked during a round",
+        "stocked": "Noted as in the house",
+        "used": "Used up"
+      }
+    },
     "shelf_life": {
       "options": {
         "important": "Important — track from the moment it is bought",
@@ -236,6 +247,20 @@
       "fields": {
         "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
         "start": { "name": "Start", "description": "Defaults to the current planning window." }
+      }
+    },
+    "get_history": {
+      "name": "Read the history",
+      "description": "Returns what has happened — listed, bought, eaten, checked — most recent first. Without filters, the whole history a page at a time.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "since": { "name": "From", "description": "Only events on or after this day." },
+        "until": { "name": "Until", "description": "Only events on or before this day." },
+        "article": { "name": "Article", "description": "Only what happened to this article." },
+        "dish": { "name": "Dish", "description": "Only what happened to this dish." },
+        "kind": { "name": "Kind", "description": "Only one kind of event." },
+        "limit": { "name": "How many", "description": "Events per page. Defaults to 200." },
+        "offset": { "name": "Skip", "description": "How many to skip — use with the total to walk through everything." }
       }
     },
     "get_list": {

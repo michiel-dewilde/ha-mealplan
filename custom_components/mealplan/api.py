@@ -18,11 +18,14 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    DEFAULT_HISTORY_LIMIT,
     DOMAIN,
+    MAX_HISTORY_LIMIT,
     SIGNAL_UPDATED,
     UNKNOWN_DEPARTMENT,
     Certainty,
     DepartmentSource,
+    EventKind,
     IngredientSource,
     Kind,
     ListName,
@@ -76,7 +79,13 @@ class Context:
         return self.entry.runtime_data.store_choice
 
     def commit(self) -> None:
-        """Persist and tell the entities to redraw."""
+        """Persist and tell the entities to redraw.
+
+        Also the moment plans that have come and gone become facts. Doing it
+        here rather than on a timer means there is nothing to schedule and
+        nothing that can drift: any write is an opportunity to catch up.
+        """
+        self.store.record_past_meals(self.today)
         self.store.async_schedule_save()
         async_dispatcher_send(self.hass, SIGNAL_UPDATED)
 
@@ -204,7 +213,7 @@ def complete_all(ctx: Context, except_items: list[str] | None = None) -> dict[st
         if any(text in folded or folded in text for text in keep):
             kept.append(item.summary)
             continue
-        item.completed = True
+        ctx.store.complete_item(ListName.SHOPPING, item, ctx.today)
         completed.append(item.summary)
 
     ctx.commit()
@@ -278,6 +287,9 @@ def set_expiry(ctx: Context, article: str, expiry: date) -> dict[str, Any]:
     existing = store.find_by_summary(ListName.STOCK, article)
     if existing is not None:
         existing.due = expiry
+        # Adding it and dating it are the same statement — "this is in the
+        # house until then" — so they are the same event.
+        store.record_event(EventKind.STOCKED, ctx.today, article=existing.article or article, due=expiry.isoformat())
     else:
         store.add_item(ListName.STOCK, article, ctx.today, due=expiry)
 
@@ -470,6 +482,57 @@ def list_dishes(ctx: Context) -> dict[str, Any]:
             }
         )
     return {"dishes": dishes}
+
+
+def get_history(
+    ctx: Context,
+    *,
+    since: date | None = None,
+    until: date | None = None,
+    article: str | None = None,
+    dish: str | None = None,
+    kind: EventKind | None = None,
+    limit: int = DEFAULT_HISTORY_LIMIT,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """Return what has happened, most recent first.
+
+    Two questions with one answer. Without filters this is the whole history, a
+    page at a time — the response carries `total` and `returned`, so a caller
+    that wants everything knows whether to ask again rather than being told no.
+    With filters it is the everyday question: when did we last buy coffee, how
+    often did we have tacos this year.
+
+    Answers rather than a blob. `export_knowledge` hands over everything at
+    once, which is the right shape for a backup and the wrong one for a model
+    that has a question.
+    """
+    events = ctx.store.data.events
+    if since is not None:
+        events = [event for event in events if event.on >= since]
+    if until is not None:
+        events = [event for event in events if event.on <= until]
+    if article is not None:
+        folded = article.casefold().strip()
+        events = [event for event in events if event.article and event.article.casefold() == folded]
+    if dish is not None:
+        folded = dish.casefold().strip()
+        events = [event for event in events if event.dish and event.dish.casefold() == folded]
+    if kind is not None:
+        events = [event for event in events if event.kind == kind]
+
+    # Most recent first: a question about a household's history is almost
+    # always about the recent end of it.
+    events = sorted(events, key=lambda event: event.on, reverse=True)
+    total = len(events)
+    window = events[max(offset, 0) : max(offset, 0) + max(min(limit, MAX_HISTORY_LIMIT), 1)]
+
+    return {
+        "total": total,
+        "returned": len(window),
+        "offset": max(offset, 0),
+        "events": [event.to_dict() for event in window],
+    }
 
 
 def get_list(

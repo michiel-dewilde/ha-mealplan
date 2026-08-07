@@ -243,6 +243,49 @@ get_week:
       selector:
         date:
 
+get_history:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    since:
+      selector:
+        date:
+    until:
+      selector:
+        date:
+    article:
+      selector:
+        text:
+    dish:
+      selector:
+        text:
+    kind:
+      selector:
+        select:
+          translation_key: event_kind
+          options:
+            - listed
+            - unlisted
+            - bought
+            - eaten
+            - checked
+            - stocked
+            - used
+    limit:
+      selector:
+        number:
+          min: 1
+          max: 2000
+          mode: box
+    offset:
+      selector:
+        number:
+          min: 0
+          max: 100000
+          mode: box
+
 get_list:
   fields:
     entry_id:

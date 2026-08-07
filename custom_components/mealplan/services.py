@@ -27,21 +27,26 @@ from .const import (
     ATTR_INCLUDE_COMPLETED,
     ATTR_INCLUDE_PANTRY,
     ATTR_INGREDIENTS,
+    ATTR_KIND,
     ATTR_KNOWLEDGE,
     ATTR_LIMIT,
     ATTR_LIST,
     ATTR_NOTE,
+    ATTR_OFFSET,
     ATTR_PEOPLE,
     ATTR_SCOPE,
     ATTR_SERVINGS,
+    ATTR_SINCE,
     ATTR_START,
     ATTR_STORE,
+    ATTR_UNTIL,
     ATTR_WHEN,
     DOMAIN,
     SERVICE_ADD_DISH,
     SERVICE_COMPLETE_ALL,
     SERVICE_EXPORT_KNOWLEDGE,
     SERVICE_GET_EXPIRING,
+    SERVICE_GET_HISTORY,
     SERVICE_GET_LIST,
     SERVICE_GET_PANTRY_CHECK,
     SERVICE_GET_WEEK,
@@ -56,6 +61,7 @@ from .const import (
     SERVICE_SORT_LIST,
     SERVICE_SUGGEST_MENU,
     WEEKDAYS,
+    EventKind,
     ListName,
     PantryScope,
     ShelfLife,
@@ -373,6 +379,37 @@ def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_GET_WEEK,
         handle_get_week,
         schema=_schema({vol.Optional(ATTR_START): cv.date}),
+        supports_response=SupportsResponse.ONLY,
+    )
+
+    async def handle_get_history(call: ServiceCall) -> ServiceResponse:
+        kind = call.data.get(ATTR_KIND)
+        return api.get_history(
+            _ctx(hass, call),
+            since=call.data.get(ATTR_SINCE),
+            until=call.data.get(ATTR_UNTIL),
+            article=call.data.get(ATTR_ARTICLE),
+            dish=call.data.get(ATTR_DISH),
+            kind=EventKind(kind) if kind else None,
+            limit=call.data.get(ATTR_LIMIT, api.DEFAULT_HISTORY_LIMIT),
+            offset=call.data.get(ATTR_OFFSET, 0),
+        )
+
+    register(
+        DOMAIN,
+        SERVICE_GET_HISTORY,
+        handle_get_history,
+        schema=_schema(
+            {
+                vol.Optional(ATTR_SINCE): cv.date,
+                vol.Optional(ATTR_UNTIL): cv.date,
+                vol.Optional(ATTR_ARTICLE): cv.string,
+                vol.Optional(ATTR_DISH): cv.string,
+                vol.Optional(ATTR_KIND): vol.In([str(kind) for kind in EventKind]),
+                vol.Optional(ATTR_LIMIT): vol.All(vol.Coerce(int), vol.Range(min=1, max=api.MAX_HISTORY_LIMIT)),
+                vol.Optional(ATTR_OFFSET): vol.All(vol.Coerce(int), vol.Range(min=0)),
+            }
+        ),
         supports_response=SupportsResponse.ONLY,
     )
 

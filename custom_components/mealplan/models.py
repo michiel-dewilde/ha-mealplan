@@ -338,6 +338,51 @@ class ListItem:
 
 
 @dataclass(slots=True)
+class Event:
+    """One thing that happened, on one day.
+
+    Deliberately flat and deliberately dumb: a kind, a day, and whichever of
+    article and dish applies. `detail` carries the rest — which list, which
+    answer, which expiry date — without inventing a column for every kind.
+
+    This is the household's memory. Everything the integration reasons with is
+    derived from it, and the derivations can be reconsidered later precisely
+    because the raw events were kept.
+    """
+
+    kind: str
+    on: date
+    article: str | None = None
+    dish: str | None = None
+    detail: dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Self | None:
+        """Build an event from stored data, or None if the day is unusable."""
+        on = _as_date(data.get("on"))
+        if on is None or not data.get("kind"):
+            return None
+        return cls(
+            kind=str(data["kind"]),
+            on=on,
+            article=data.get("article") or None,
+            dish=data.get("dish") or None,
+            detail=dict(data.get("detail") or {}),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialise for storage and export, leaving out what is empty."""
+        data: dict[str, Any] = {"kind": self.kind, "on": self.on.isoformat()}
+        if self.article:
+            data["article"] = self.article
+        if self.dish:
+            data["dish"] = self.dish
+        if self.detail:
+            data["detail"] = self.detail
+        return data
+
+
+@dataclass(slots=True)
 class Listing:
     """One article, on one shopping list, on one day.
 

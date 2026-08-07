@@ -122,21 +122,29 @@ class MealPlanTodoList(MealPlanEntity, TodoListEntity):
         await self._async_persist()
 
     async def async_update_todo_item(self, item: TodoItem) -> None:
-        """Update an item's summary, status, due date or description."""
+        """Update an item's summary, status, due date or description.
+
+        This is where most ticking off actually happens — from the built-in
+        to-do card, from the dashboard cards, from Assist — so it is where the
+        history has to be written, not only in the service that does it in bulk.
+        """
         stored = self._store.find_item(self._list_name, item.uid or "")
         if stored is None:
             return
         if item.summary is not None:
             stored.summary = item.summary.strip()
         if item.status is not None:
-            stored.completed = item.status == TodoItemStatus.COMPLETED
+            if item.status == TodoItemStatus.COMPLETED:
+                self._store.complete_item(self._list_name, stored, self._today)
+            else:
+                stored.completed = False
         stored.due = _as_date(item.due)
         stored.note = self._note_from_description(stored, item.description)
         await self._async_persist()
 
     async def async_delete_todo_items(self, uids: list[str]) -> None:
         """Remove items. Taking something off is as easy as putting it on."""
-        self._store.remove_items(self._list_name, uids)
+        self._store.remove_items(self._list_name, uids, self._today)
         await self._async_persist()
 
     async def async_move_todo_item(self, uid: str, previous_uid: str | None = None) -> None:

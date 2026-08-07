@@ -32,12 +32,13 @@ from .const import (
     STORAGE_VERSION,
     UNKNOWN_DEPARTMENT,
     DepartmentSource,
+    EventKind,
     Kind,
     ListName,
     ShelfLife,
 )
 from .defaults import DEFAULT_DEPARTMENTS
-from .models import Article, DayPlan, Department, Dish, Listing, ListItem, StoreOrder
+from .models import Article, DayPlan, Department, Dish, Event, Listing, ListItem, StoreOrder
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,6 +77,7 @@ class MealPlanData:
     dishes: dict[str, Dish] = field(default_factory=dict)
     plan: dict[date, DayPlan] = field(default_factory=dict)
     listings: list[Listing] = field(default_factory=list)
+    events: list[Event] = field(default_factory=list)
     lists: dict[str, list[ListItem]] = field(default_factory=dict)
     window_end: date | None = None
     """A stretched end date for the menu window, or None for its natural length."""
@@ -114,6 +116,7 @@ class MealPlanStore:
                 _LOGGER.warning("Discarding plan entry with unparseable date %r", iso)
 
         listings = [Listing.from_dict(item) for item in raw.get("listings") or []]
+        events = [Event.from_dict(item) for item in raw.get("events") or []]
 
         return MealPlanData(
             departments=[Department.from_dict(d) for d in raw.get("departments") or DEFAULT_DEPARTMENTS],
@@ -122,6 +125,7 @@ class MealPlanStore:
             dishes={d["name"]: Dish.from_dict(d) for d in raw.get("dishes") or []},
             plan=plan,
             listings=[item for item in listings if item is not None],
+            events=[item for item in events if item is not None],
             lists={name: [ListItem.from_dict(i) for i in items] for name, items in (raw.get("lists") or {}).items()},
             window_end=_parse_date(raw.get("window_end")),
             source=raw.get("source") or {},
@@ -136,6 +140,7 @@ class MealPlanStore:
             "dishes": [d.to_dict() for d in self.data.dishes.values()],
             "plan": {day.isoformat(): entry.to_dict() for day, entry in sorted(self.data.plan.items())},
             "listings": [item.to_dict() for item in self.data.listings],
+            "events": [item.to_dict() for item in self.data.events],
             "lists": {name: [i.to_dict() for i in items] for name, items in self.data.lists.items()},
             "window_end": self.data.window_end.isoformat() if self.data.window_end else None,
             "source": self.data.source,
@@ -241,6 +246,52 @@ class MealPlanStore:
         article.times += 1
         self.data.listings.append(Listing(article=name, on=on))
         return article
+
+    # ------------------------------------------------------------------ events
+
+    def record_event(
+        self,
+        kind: EventKind,
+        on: date,
+        *,
+        article: str | None = None,
+        dish: str | None = None,
+        **detail: Any,
+    ) -> Event:
+        """Write down that something happened."""
+        event = Event(
+            kind=str(kind),
+            on=on,
+            article=article,
+            dish=dish,
+            detail={key: value for key, value in detail.items() if value is not None},
+        )
+        self.data.events.append(event)
+        return event
+
+    def last_event(self, kind: EventKind, *, article: str) -> date | None:
+        """Return when this article last had an event of this kind."""
+        days = [event.on for event in self.data.events if event.kind == kind and event.article == article]
+        return max(days) if days else None
+
+    def record_past_meals(self, today: date) -> int:
+        """Turn plans that have come and gone into facts.
+
+        A plan is a intention and can be edited or cleared afterwards; what was
+        actually on the table on a day that has passed should survive that. So
+        once a planned day is behind us it is written down, once, and the plan
+        is then free to change without rewriting history.
+
+        Backfilled on every write rather than on a timer: it is a scan over a
+        few hundred days, it cannot drift, and there is nothing to schedule.
+        """
+        already = {event.on for event in self.data.events if event.kind == EventKind.EATEN}
+        added = 0
+        for day, entry in self.data.plan.items():
+            if day < today and entry.dish and day not in already:
+                self.record_event(EventKind.EATEN, day, dish=entry.dish, people=entry.people)
+                added += 1
+        return added
 
     def last_listed(self, name: str) -> date | None:
         """Return the most recent day this article went onto a list.
@@ -423,6 +474,14 @@ class MealPlanStore:
         """
         name = article_name if article_name is not None else summary.strip()
         article = self.record_listing(name, today)
+        self.record_event(
+            EventKind.STOCKED if str(list_name) == ListName.STOCK else EventKind.LISTED,
+            today,
+            article=article.name,
+            dish=dish,
+            list=str(list_name),
+            due=due.isoformat() if due else None,
+        )
         item = ListItem(
             uid=uuid.uuid4().hex,
             summary=summary.strip(),
@@ -437,10 +496,49 @@ class MealPlanStore:
         self.items(list_name).append(item)
         return item
 
-    def remove_items(self, list_name: ListName | str, uids: Iterable[str]) -> None:
-        """Take items off a list."""
+    def complete_item(self, list_name: ListName | str, item: ListItem, today: date) -> None:
+        """Tick an item off, and write down what that means for this list.
+
+        Ticking off a shopping item means it was bought — which until now was
+        nowhere recorded. Every cadence this integration reasons with was
+        measured on "went onto a list" instead, which is a near miss: things get
+        written down and then not bought.
+
+        On the stock list the same gesture means the opposite end of the story:
+        it has been used up. The expiry date rides along as a fact, without any
+        conclusion about whether it was eaten in time.
+        """
+        if item.completed:
+            return
+        item.completed = True
+        stock = str(list_name) == ListName.STOCK
+        self.record_event(
+            EventKind.USED if stock else EventKind.BOUGHT,
+            today,
+            article=item.article or item.summary,
+            dish=item.dish,
+            list=str(list_name),
+            due=item.due.isoformat() if item.due else None,
+        )
+
+    def remove_items(self, list_name: ListName | str, uids: Iterable[str], today: date | None = None) -> None:
+        """Take items off a list.
+
+        Anything still open when it goes is recorded as `unlisted`: it was
+        written down and then did not happen, which is worth being able to tell
+        apart from having been bought.
+        """
         doomed = set(uids)
         items = self.items(list_name)
+        if today is not None:
+            for item in items:
+                if item.uid in doomed and not item.completed:
+                    self.record_event(
+                        EventKind.UNLISTED,
+                        today,
+                        article=item.article or item.summary,
+                        list=str(list_name),
+                    )
         self.data.lists[str(list_name)] = [item for item in items if item.uid not in doomed]
 
     def sort_list(self, list_name: ListName | str, store: str | None) -> None:

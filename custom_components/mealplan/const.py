@@ -13,7 +13,7 @@ STORAGE_KEY: Final = f"{DOMAIN}.data"
 STORAGE_VERSION: Final = 1
 
 # The knowledge file schema this integration reads and writes.
-KNOWLEDGE_SCHEMA: Final = "2.2"
+KNOWLEDGE_SCHEMA: Final = "2.3"
 
 # Configuration
 CONF_CALENDARS: Final = "calendars"
@@ -126,6 +126,37 @@ class When(StrEnum):
     LATER = "later"
 
 
+class EventKind(StrEnum):
+    """What happened, in the household's own history.
+
+    The counts and cadences this integration reasons with are all derived from
+    these. Until now only `listed` was recorded, under a different name, which
+    meant "how often do we buy coffee" was really answering "how often does
+    coffee get written down" — close, but not the same question.
+    """
+
+    LISTED = "listed"
+    """Went onto a list."""
+
+    UNLISTED = "unlisted"
+    """Came off a list without being bought."""
+
+    BOUGHT = "bought"
+    """Ticked off on a shopping list. This is the one that was missing."""
+
+    EATEN = "eaten"
+    """A planned day came and went with a dish on it."""
+
+    CHECKED = "checked"
+    """Answered during a round: still enough, or run out."""
+
+    STOCKED = "stocked"
+    """Noted as being in the house, with or without a date."""
+
+    USED = "used"
+    """Ticked off the stock list. Eaten up, whenever that happened."""
+
+
 class PantryScope(StrEnum):
     """Which pantry articles to check."""
 
@@ -151,6 +182,7 @@ SERVICE_EXPORT_KNOWLEDGE: Final = "export_knowledge"
 SERVICE_SET_STORE_ORDER: Final = "set_store_order"
 
 SERVICE_GET_WEEK: Final = "get_week"
+SERVICE_GET_HISTORY: Final = "get_history"
 SERVICE_GET_LIST: Final = "get_list"
 SERVICE_LIST_DISHES: Final = "list_dishes"
 SERVICE_GET_PANTRY_CHECK: Final = "get_pantry_check"
@@ -170,9 +202,13 @@ ATTR_EXPIRY: Final = "expiry"
 ATTR_INCLUDE_PANTRY: Final = "include_pantry"
 ATTR_INCLUDE_COMPLETED: Final = "include_completed"
 ATTR_INGREDIENTS: Final = "ingredients"
+ATTR_KIND: Final = "kind"
 ATTR_KNOWLEDGE: Final = "knowledge"
 ATTR_LIMIT: Final = "limit"
 ATTR_LIST: Final = "list"
+ATTR_OFFSET: Final = "offset"
+ATTR_SINCE: Final = "since"
+ATTR_UNTIL: Final = "until"
 ATTR_NOTE: Final = "note"
 ATTR_PEOPLE: Final = "people"
 ATTR_SCOPE: Final = "scope"
@@ -196,3 +232,9 @@ CARDS_URL: Final = f"/{DOMAIN}-static"
 
 # Number of days an expiry counts as "urgent" on the dashboard.
 URGENT_EXPIRY_DAYS: Final = 2
+
+# How many events one `get_history` call returns by default, and at most. A
+# model asking for everything gets it a page at a time rather than a refusal:
+# the response carries the total, so it knows whether to ask again.
+DEFAULT_HISTORY_LIMIT: Final = 200
+MAX_HISTORY_LIMIT: Final = 2000
