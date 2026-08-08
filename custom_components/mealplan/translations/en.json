@@ -274,7 +274,7 @@
       "fields": {
         "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
         "department": { "name": "Key", "description": "The short key, e.g. `bakery`. Not shown on screen." },
-        "labels": { "name": "Labels", "description": "The name per language, e.g. {\"en\": \"Bakery\"}." },
+        "labels": { "name": "Labels", "description": "The name per language, keyed by language code — en, nl." },
         "kind": { "name": "Kind", "description": "Whether things here are bought because a meal is planned, or because they ran out." },
         "shelf_life": { "name": "Shelf life", "description": "How much an expiry date matters here by default." },
         "position": { "name": "Position", "description": "Where it sits in the walking route. Left out, it goes to the end." }

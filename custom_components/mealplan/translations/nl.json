@@ -274,7 +274,7 @@
       "fields": {
         "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
         "department": { "name": "Sleutel", "description": "De korte sleutel, bvb. `bakery`. Niet zichtbaar op het scherm." },
-        "labels": { "name": "Namen", "description": "De naam per taal, bvb. {\"nl\": \"Brood & banket\"}." },
+        "labels": { "name": "Namen", "description": "De naam per taal, met de taalcode als sleutel — en, nl." },
         "kind": { "name": "Soort", "description": "Of je hier dingen koopt omdat er iets gepland staat, of omdat ze op zijn." },
         "shelf_life": { "name": "Houdbaarheid", "description": "Hoeveel een vervaldatum hier standaard uitmaakt." },
         "position": { "name": "Plaats", "description": "Waar het in de looproute komt. Weggelaten gaat het achteraan." }
