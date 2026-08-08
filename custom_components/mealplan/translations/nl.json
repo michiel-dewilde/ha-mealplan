@@ -90,6 +90,18 @@
         "fridge": "Frigoronde"
       }
     },
+    "department_kind": {
+      "options": {
+        "fresh": "Vers — je koopt het omdat er iets gepland staat",
+        "pantry": "Kast — je koopt het omdat het op is"
+      }
+    },
+    "deleted_kind": {
+      "options": {
+        "article": "Artikel",
+        "dish": "Gerecht"
+      }
+    },
     "list_name": {
       "options": {
         "shopping": "Boodschappen",
@@ -209,6 +221,138 @@
         "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
         "to": { "name": "Naar lijst", "description": "Waar het allemaal terecht moet komen." },
         "from": { "name": "Van lijst", "description": "Welke lijst leeggemaakt wordt. Standaard de volgende beurt." }
+      }
+    },
+    "set_dish": {
+      "name": "Vastleggen wat een gerecht is",
+      "description": "Vervangt de ingrediënten van een gerecht door de opgegeven lijst, in plaats van eraan toe te voegen. Zo krijg je een ingrediënt er weer uit. Hoe vaak het gegeten is en wanneer, blijft ongemoeid.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "dish": { "name": "Gerecht", "description": "Welk gerecht." },
+        "ingredients": { "name": "Ingrediënten", "description": "De volledige lijst. Wat je weglaat, verdwijnt uit het gerecht." },
+        "usual_day": { "name": "Vaste dag", "description": "De weekdag waar dit gerecht meestal op valt. Leeg wist hem." },
+        "recipe_list": { "name": "Receptenlijst", "description": "De naam waaronder dit gerecht op de receptenlijst staat." }
+      }
+    },
+    "remove_dish": {
+      "name": "Een gerecht verwijderen",
+      "description": "Zet een gerecht in de prullenmand, waar het terug te halen is. Dagen die al gepland staan, houden het: wat op tafel stond is een feit.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "dish": { "name": "Gerecht", "description": "Welk gerecht." }
+      }
+    },
+    "remove_article": {
+      "name": "Een artikel verwijderen",
+      "description": "Zet een artikel in de prullenmand en haalt het uit de gerechten waar het een ingrediënt van was. Welke gerechten dat waren, wordt onthouden, zodat terugzetten het ook echt terugzet. Regels die al op een lijst staan, blijven staan.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "article": { "name": "Artikel", "description": "Welk artikel." }
+      }
+    },
+    "rename_article": {
+      "name": "Een artikel hernoemen",
+      "description": "Hernoemt een artikel overal waar het voorkomt, geschiedenis inbegrepen — de tellingen en cadansen komen uit die gebeurtenissen, dus een hernoeming die halverwege stopt, laat het artikel gloednieuw lijken. Hernoemen naar een bestaande naam voegt de twee samen.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "article": { "name": "Artikel", "description": "De naam zoals hij nu is." },
+        "to": { "name": "Nieuwe naam", "description": "De naam die het moet krijgen." }
+      }
+    },
+    "merge_articles": {
+      "name": "Twee artikelen samenvoegen",
+      "description": "Vouwt het ene artikel in het andere, met optelling van wat ze allebei wisten. Twee schrijfwijzen van hetzelfde dragen elk een halve geschiedenis, waardoor ze allebei zeldzamer lijken dan het ding is.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "article": { "name": "Artikel", "description": "Degene die verdwijnt." },
+        "into": { "name": "Naar", "description": "Degene die blijft." }
+      }
+    },
+    "set_department": {
+      "name": "Een afdeling toevoegen of wijzigen",
+      "description": "Voegt een afdeling toe, of wijzigt een bestaande. De volgorde van de afdelingen is de looproute, dus een nieuwe kan er een plaats in krijgen.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "department": { "name": "Sleutel", "description": "De korte sleutel, bvb. `bakery`. Niet zichtbaar op het scherm." },
+        "labels": { "name": "Namen", "description": "De naam per taal, bvb. {\"nl\": \"Brood & banket\"}." },
+        "kind": { "name": "Soort", "description": "Of je hier dingen koopt omdat er iets gepland staat, of omdat ze op zijn." },
+        "shelf_life": { "name": "Houdbaarheid", "description": "Hoeveel een vervaldatum hier standaard uitmaakt." },
+        "position": { "name": "Plaats", "description": "Waar het in de looproute komt. Weggelaten gaat het achteraan." }
+      }
+    },
+    "remove_department": {
+      "name": "Een afdeling verwijderen",
+      "description": "Verwijdert een afdeling nadat je gezegd hebt waar haar artikelen heen gaan. Nooit geraden: een afdeling met dertig artikelen erin is dertig artikelen die ergens terechtkomen.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "department": { "name": "Sleutel", "description": "Welke afdeling." },
+        "move_to": { "name": "Artikelen naar", "description": "Waar haar artikelen heen gaan. Weggelaten worden ze ongeklasseerd." }
+      }
+    },
+    "set_store": {
+      "name": "Een winkel toevoegen",
+      "description": "Voegt een winkel toe, met de afdelingsvolgorde zoals ze nu is als startroute. Zet die daarna recht terwijl je in de winkel staat.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "name": { "name": "Winkel", "description": "Hoe de winkel heet." }
+      }
+    },
+    "remove_store": {
+      "name": "Een winkel verwijderen",
+      "description": "Verwijdert een winkel en de looproute die erbij hoorde.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "name": { "name": "Winkel", "description": "Welke winkel." }
+      }
+    },
+    "restore_deleted": {
+      "name": "Uit de prullenmand halen",
+      "description": "Haalt een verwijderd artikel of gerecht terug, met alles waar het aan vasthing.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "name": { "name": "Naam", "description": "Wat je wil terugzetten." },
+        "kind": { "name": "Soort", "description": "Of het een artikel of een gerecht was." }
+      }
+    },
+    "discard_deleted": {
+      "name": "Iets definitief weggooien",
+      "description": "Gooit een verwijderd artikel of gerecht voorgoed weg. Het andere uiteinde van de prullenmand: een mand die niemand kan leegmaken is een plek waar dingen zich opstapelen, geen vangnet.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "name": { "name": "Naam", "description": "Wat je wil weggooien." },
+        "kind": { "name": "Soort", "description": "Of het een artikel of een gerecht was." }
+      }
+    },
+    "forget_events": {
+      "name": "Een stuk geschiedenis vergeten",
+      "description": "Wist de gebeurtenissen tussen twee datums, eventueel van één soort. Bewust bot: het bestaat voor een reeks rijen die door iets anders dan het huishouden gemaakt is.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "since": { "name": "Van", "description": "Eerste dag om te vergeten, inbegrepen." },
+        "until": { "name": "Tot", "description": "Laatste dag om te vergeten, inbegrepen." },
+        "kind": { "name": "Soort", "description": "Alleen deze soort gebeurtenis. Weggelaten allemaal." }
+      }
+    },
+    "list_articles": {
+      "name": "De artikelen opsommen",
+      "description": "Elk artikel alfabetisch, met zijn afdeling, hoe vaak het genoteerd is, wanneer voor het laatst, en welke gerechten het gebruiken.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." },
+        "search": { "name": "Zoeken", "description": "Alleen artikelen waarvan de naam dit bevat." }
+      }
+    },
+    "list_departments": {
+      "name": "De afdelingen en winkels opsommen",
+      "description": "De afdelingen in looproutevolgorde met hoeveel artikelen er in elke zitten, en de winkels met wanneer er voor het laatst gewinkeld is.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." }
+      }
+    },
+    "get_deleted": {
+      "name": "De prullenmand lezen",
+      "description": "Wat verwijderd is en nog terug te halen valt, recentste eerst.",
+      "fields": {
+        "entry_id": { "name": "Weekplanning", "description": "Welke weekplanning. Mag leeg als er maar één is." }
       }
     },
     "set_expiry": {
@@ -357,6 +501,11 @@
     "no_meal_plan": { "message": "Er is geen weekplanning ingesteld." },
     "no_store": { "message": "Er is geen winkel gekozen, dus er valt geen looproute vast te leggen." },
     "unknown_item": { "message": "Er staat nergens iets met de naam “{item}” op een lijst." },
+    "unknown_article": { "message": "Er is geen artikel “{article}”." },
+    "unknown_store": { "message": "Er is geen winkel “{store}”." },
+    "not_in_the_bin": { "message": "Er zit niets met de naam “{name}” in de prullenmand." },
+    "empty_name": { "message": "Een naam mag niet leeg zijn." },
+    "merge_with_itself": { "message": "Een artikel kan niet met zichzelf samengevoegd worden." },
     "check_off_needs_articles": { "message": "Zeg welke artikelen op zijn. Alleen “nog genoeg” kan een hele ronde in één keer beantwoorden." },
     "ambiguous_meal_plan": { "message": "Er is meer dan één weekplanning. Zeg welke." },
     "undated_stock_disabled": { "message": "Voorraaditems zonder vervaldatum staan uit voor deze weekplanning." },

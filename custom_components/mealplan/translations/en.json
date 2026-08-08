@@ -90,6 +90,18 @@
         "fridge": "Fridge round"
       }
     },
+    "department_kind": {
+      "options": {
+        "fresh": "Fresh — bought because a meal is planned",
+        "pantry": "Pantry — bought because it ran out"
+      }
+    },
+    "deleted_kind": {
+      "options": {
+        "article": "Article",
+        "dish": "Dish"
+      }
+    },
     "list_name": {
       "options": {
         "shopping": "Shopping list",
@@ -209,6 +221,138 @@
         "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
         "to": { "name": "To list", "description": "Where it should all end up." },
         "from": { "name": "From list", "description": "Which list is emptied. The next trip by default." }
+      }
+    },
+    "set_dish": {
+      "name": "Set what a dish is",
+      "description": "Replaces a dish's ingredients with the list given, instead of adding to them. This is how an ingredient comes back out of a dish. How often it was eaten, and when, is left alone.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "dish": { "name": "Dish", "description": "Which dish." },
+        "ingredients": { "name": "Ingredients", "description": "The complete list. Anything left out is removed from the dish." },
+        "usual_day": { "name": "Usual day", "description": "The weekday this dish usually falls on. Empty clears it." },
+        "recipe_list": { "name": "Recipe list", "description": "The name this dish goes by on the recipe list." }
+      }
+    },
+    "remove_dish": {
+      "name": "Remove a dish",
+      "description": "Moves a dish to the bin, where it can be restored. Days already planned keep it: what was on the table is a fact.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "dish": { "name": "Dish", "description": "Which dish." }
+      }
+    },
+    "remove_article": {
+      "name": "Remove an article",
+      "description": "Moves an article to the bin and out of the dishes it was an ingredient of. Which dishes those were is remembered, so restoring puts it back. Lines already on a list are left alone.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "article": { "name": "Article", "description": "Which article." }
+      }
+    },
+    "rename_article": {
+      "name": "Rename an article",
+      "description": "Renames an article everywhere it appears, history included — the counts and cadences are read from those events, so a rename that stopped short would make the article look brand new. Renaming onto a name that already exists merges the two.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "article": { "name": "Article", "description": "The name as it is now." },
+        "to": { "name": "New name", "description": "The name it should have." }
+      }
+    },
+    "merge_articles": {
+      "name": "Merge two articles",
+      "description": "Folds one article into another, adding up what both of them knew. Two spellings of the same thing each carry half a history, which makes both look rarer than the thing is.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "article": { "name": "Article", "description": "The one that disappears." },
+        "into": { "name": "Into", "description": "The one that stays." }
+      }
+    },
+    "set_department": {
+      "name": "Add or change a department",
+      "description": "Adds a department, or changes one that exists. The order of the departments is the walking route, so a new one can be given a position in it.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "department": { "name": "Key", "description": "The short key, e.g. `bakery`. Not shown on screen." },
+        "labels": { "name": "Labels", "description": "The name per language, e.g. {\"en\": \"Bakery\"}." },
+        "kind": { "name": "Kind", "description": "Whether things here are bought because a meal is planned, or because they ran out." },
+        "shelf_life": { "name": "Shelf life", "description": "How much an expiry date matters here by default." },
+        "position": { "name": "Position", "description": "Where it sits in the walking route. Left out, it goes to the end." }
+      }
+    },
+    "remove_department": {
+      "name": "Remove a department",
+      "description": "Removes a department after saying where its articles go. Never guessed: a department with thirty articles in it is thirty articles that end up somewhere.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "department": { "name": "Key", "description": "Which department." },
+        "move_to": { "name": "Move articles to", "description": "Where its articles go. Left out, they become unclassified." }
+      }
+    },
+    "set_store": {
+      "name": "Add a store",
+      "description": "Adds a store, starting from the department order as it stands. Correct it in the aisle from there.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "name": { "name": "Store", "description": "What the shop is called." }
+      }
+    },
+    "remove_store": {
+      "name": "Remove a store",
+      "description": "Removes a store and the walking route that belonged to it.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "name": { "name": "Store", "description": "Which shop." }
+      }
+    },
+    "restore_deleted": {
+      "name": "Restore from the bin",
+      "description": "Takes a deleted article or dish back out of the bin, with everything it was attached to.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "name": { "name": "Name", "description": "What to restore." },
+        "kind": { "name": "Kind", "description": "Whether it was an article or a dish." }
+      }
+    },
+    "discard_deleted": {
+      "name": "Empty something out of the bin",
+      "description": "Throws a deleted article or dish out for good. The other end of the bin: one nobody can empty is a place things accumulate rather than a safety net.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "name": { "name": "Name", "description": "What to throw out." },
+        "kind": { "name": "Kind", "description": "Whether it was an article or a dish." }
+      }
+    },
+    "forget_events": {
+      "name": "Forget a stretch of history",
+      "description": "Drops the events between two dates, optionally of one kind only. Blunt on purpose: it exists for a run of rows made by something that was not the household.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "since": { "name": "From", "description": "First day to forget, inclusive." },
+        "until": { "name": "To", "description": "Last day to forget, inclusive." },
+        "kind": { "name": "Kind", "description": "Only this kind of event. Left out, all of them." }
+      }
+    },
+    "list_articles": {
+      "name": "List the articles",
+      "description": "Every article alphabetically, with its department, how often it has been listed, when it last was, and which dishes use it.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." },
+        "search": { "name": "Search", "description": "Only articles whose name contains this." }
+      }
+    },
+    "list_departments": {
+      "name": "List the departments and stores",
+      "description": "The departments in walking order with how many articles sit in each, and the stores with when they were last shopped at.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." }
+      }
+    },
+    "get_deleted": {
+      "name": "Read the bin",
+      "description": "What has been deleted and can still be restored, most recent first.",
+      "fields": {
+        "entry_id": { "name": "Meal plan", "description": "Which meal plan. Optional if there is only one." }
       }
     },
     "set_expiry": {
@@ -357,6 +501,11 @@
     "no_meal_plan": { "message": "No meal plan is set up." },
     "no_store": { "message": "No store is selected, so there is nothing to record a walking route for." },
     "unknown_item": { "message": "There is nothing called \"{item}\" on any list." },
+    "unknown_article": { "message": "There is no article called \"{article}\"." },
+    "unknown_store": { "message": "There is no store called \"{store}\"." },
+    "not_in_the_bin": { "message": "There is nothing called \"{name}\" in the bin." },
+    "empty_name": { "message": "A name cannot be empty." },
+    "merge_with_itself": { "message": "An article cannot be merged into itself." },
     "check_off_needs_articles": { "message": "Say which articles have run out. Only \"still enough\" can answer a whole round at once." },
     "ambiguous_meal_plan": { "message": "There is more than one meal plan. Say which one." },
     "undated_stock_disabled": { "message": "Stock items without an expiry date are switched off for this meal plan." },
