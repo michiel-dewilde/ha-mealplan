@@ -86,6 +86,34 @@ const STRINGS = {
     today: "today",
     expired: "past",
     in_days: "in {n} d",
+    manage: "Manage",
+    tab_dishes: "Dishes",
+    tab_articles: "Articles",
+    tab_departments: "Departments",
+    tab_bin: "Bin",
+    article: "Article",
+    search: "Search",
+    nothing_found: "Nothing found.",
+    bin_empty: "The bin is empty.",
+    new_dish: "New dish",
+    new_department: "New department",
+    new_store: "New shop",
+    ingredients: "Ingredients, one per line",
+    usual_day: "Usual day",
+    no_day: "No fixed day",
+    merge_into: "Merge into…",
+    restore: "Restore",
+    discard: "Throw out",
+    remove: "Remove",
+    sure_remove: "Remove? Tap again",
+    times_n: "{n}×",
+    never_listed: "never listed",
+    in_dishes_n: "in {n} dishes",
+    articles_n: "{n} articles",
+    move_articles_to: "Move its articles to",
+    key: "Key",
+    label: "Name",
+    stores: "Shops",
     route: "Walking route",
     route_hint: "Fix it while you are standing in it. The open list is re-sorted straight away.",
     up: "Up",
@@ -159,6 +187,34 @@ const STRINGS = {
     today: "vandaag",
     expired: "voorbij",
     in_days: "over {n} d",
+    manage: "Beheer",
+    tab_dishes: "Gerechten",
+    tab_articles: "Artikelen",
+    tab_departments: "Afdelingen",
+    tab_bin: "Prullenmand",
+    article: "Artikel",
+    search: "Zoeken",
+    nothing_found: "Niets gevonden.",
+    bin_empty: "De prullenmand is leeg.",
+    new_dish: "Nieuw gerecht",
+    new_department: "Nieuwe afdeling",
+    new_store: "Nieuwe winkel",
+    ingredients: "Ingrediënten, één per regel",
+    usual_day: "Vaste dag",
+    no_day: "Geen vaste dag",
+    merge_into: "Samenvoegen met…",
+    restore: "Terugzetten",
+    discard: "Weggooien",
+    remove: "Verwijderen",
+    sure_remove: "Verwijderen? Tik nog eens",
+    times_n: "{n}×",
+    never_listed: "nooit genoteerd",
+    in_dishes_n: "in {n} gerechten",
+    articles_n: "{n} artikelen",
+    move_articles_to: "Artikelen naar",
+    key: "Sleutel",
+    label: "Naam",
+    stores: "Winkels",
     route: "Looproute",
     route_hint: "Zet het recht terwijl je erin staat. De openstaande lijst wordt meteen mee gesorteerd.",
     up: "Omhoog",
@@ -1287,6 +1343,418 @@ class MealplanRouteCard extends MealplanCard {
   }
 }
 
+/* ------------------------------------------------------------ manage card */
+
+/** One card, four modes: dishes, articles, departments, the bin.
+ *
+ *  Four cards would have been four sets of the same search box and the same
+ *  detail sheet. What differs between them is a list, a row and a form; what is
+ *  the same is everything around those.
+ *
+ *  Alphabetical throughout, deliberately. This is the screen you come to
+ *  knowing the name of the thing you want to change, which is the other half of
+ *  the rule the round cards follow — there you grab, here you look up.
+ */
+class MealplanManageCard extends MealplanCard {
+  static css = `
+.tabs { display: flex; gap: 6px; padding: 0 12px 8px; flex-wrap: wrap; }
+.tabs button {
+  flex: 1 1 auto; min-height: 36px; padding: 0 10px; border-radius: 9px; font-size: 13px;
+  border: 1px solid var(--divider-color); white-space: nowrap;
+}
+.tabs button.on { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: transparent; }
+.find { padding: 0 16px 8px; }
+.rows { max-height: 60vh; overflow-y: auto; }
+.row {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 9px 16px; border-top: 1px solid var(--divider-color);
+}
+.row .name { flex: 1 1 auto; min-width: 0; font-size: 15px; overflow-wrap: anywhere; }
+.row .name small { display: block; font-size: 12px; color: var(--secondary-text-color); }
+.row .n { flex: 0 0 auto; font-size: 12px; color: var(--secondary-text-color); }
+.sheet { border-top: 2px solid var(--primary-color); padding: 12px 16px 4px; background: var(--secondary-background-color); }
+.sheet .title { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sheet .title b { font-size: 15px; overflow-wrap: anywhere; }
+.sheet .title button { margin-left: auto; font-size: 20px; line-height: 1; padding: 4px 8px; }
+.sheet label { display: block; font-size: 12px; color: var(--secondary-text-color); margin: 10px 0 3px; }
+.sheet textarea, .sheet select {
+  font: inherit; width: 100%; box-sizing: border-box; padding: 8px 10px;
+  border-radius: 10px; border: 1px solid var(--divider-color);
+  background: var(--card-background-color); color: var(--primary-text-color);
+}
+.sheet textarea { min-height: 96px; resize: vertical; }
+.sheet select { min-height: 40px; }
+.count { padding: 6px 16px 0; font-size: 12px; color: var(--secondary-text-color); }
+`;
+
+  static MODES = ["dishes", "articles", "departments", "bin"];
+
+  setConfig(config) {
+    super.setConfig(config);
+    this._mode = MealplanManageCard.MODES.includes(this._config.mode) ? this._config.mode : "dishes";
+  }
+
+  init() {
+    this._card.innerHTML = `<header><h1></h1><span class="sub"></span></header>
+      <div class="tabs"></div>
+      <div class="find"><input type="search" placeholder=""></div>
+      <div class="rows"></div><div class="foot"></div>`;
+    this._card.addEventListener("click", (event) => this.onClick(event));
+    this._card.addEventListener("input", (event) => {
+      if (event.target.closest(".find input")) this.render();
+    });
+    this._card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && event.target.closest(".find input")) this.render();
+    });
+  }
+
+  redraw() {
+    if (!this.summary) return this.renderMissing();
+    this._card.querySelector("h1").textContent = this._config.title ?? this.t("manage");
+    this._card.querySelector(".find input").placeholder = this.t("search");
+    this.load();
+  }
+
+  async load() {
+    if (this._loading) return;
+    this._loading = true;
+    const [dishes, articles, departments, bin] = await Promise.all([
+      this.call("list_dishes", {}, true),
+      this.call("list_articles", {}, true),
+      this.call("list_departments", {}, true),
+      this.call("get_deleted", {}, true),
+    ]);
+    this._dishes = dishes?.dishes || [];
+    this._articles = articles?.articles || [];
+    this._departments = departments?.departments || [];
+    this._stores = departments?.stores || [];
+    this._bin = bin?.deleted || [];
+    this._loading = false;
+    this.render();
+  }
+
+  get needle() {
+    return (this._card.querySelector(".find input")?.value || "").trim().toLowerCase();
+  }
+
+  render() {
+    this._card.querySelector(".tabs").innerHTML = MealplanManageCard.MODES.map(
+      (mode) =>
+        `<button class="${mode === this._mode ? "on" : ""}" data-act="mode" data-mode="${mode}">${escapeHtml(this.t(`tab_${mode}`))}</button>`,
+    ).join("");
+    // The bin has nothing to search through and the departments are a route of
+    // sixteen; a search box there is furniture.
+    this._card.querySelector(".find").style.display =
+      this._mode === "dishes" || this._mode === "articles" ? "" : "none";
+
+    const rows = { dishes: () => this.dishRows(), articles: () => this.articleRows(), departments: () => this.departmentRows(), bin: () => this.binRows() }[this._mode]();
+    this._card.querySelector(".rows").innerHTML =
+      rows || `<div class="pad muted">${escapeHtml(this.t(this._mode === "bin" ? "bin_empty" : "nothing_found"))}</div>`;
+    this._card.querySelector(".foot").innerHTML = this.errorLine() + this.sheet() + this.addRow();
+  }
+
+  row(key, name, detail, right) {
+    return `<button class="row" data-act="open" data-key="${escapeHtml(key)}">
+      <span class="name">${escapeHtml(name)}${detail ? `<small>${escapeHtml(detail)}</small>` : ""}</span>
+      ${right ? `<span class="n">${escapeHtml(right)}</span>` : ""}
+    </button>`;
+  }
+
+  dishRows() {
+    const needle = this.needle;
+    return this._dishes
+      .filter((dish) => !needle || dish.name.toLowerCase().includes(needle))
+      .map((dish) => {
+        const parts = [this.t("times_n", { n: dish.times })];
+        if (dish.last) parts.push(this.fmt(dish.last, { day: "numeric", month: "short", year: "numeric" }));
+        const ingredients = dish.fresh.length + dish.pantry.length + dish.unclassified.length;
+        return this.row(dish.name, dish.name, parts.join(" · "), `${ingredients}`);
+      })
+      .join("");
+  }
+
+  articleRows() {
+    const needle = this.needle;
+    const shown = this._articles.filter((a) => !needle || a.article.toLowerCase().includes(needle));
+    // A few hundred articles is a scroll nobody finishes. The search box is the
+    // way in; the cap keeps the page from being the reason it feels slow.
+    const capped = shown.slice(0, 60);
+    return (
+      capped
+        .map((article) => {
+          const parts = [article.label];
+          parts.push(
+            article.last_listed
+              ? this.t("last_listed", { d: this.fmt(article.last_listed, { day: "numeric", month: "short", year: "numeric" }) })
+              : this.t("never_listed"),
+          );
+          if (article.dishes.length) parts.push(this.t("in_dishes_n", { n: article.dishes.length }));
+          return this.row(article.article, article.article, parts.join(" · "), this.t("times_n", { n: article.times }));
+        })
+        .join("") + (shown.length > capped.length ? `<div class="count">${escapeHtml(this.t("more", { n: shown.length - capped.length }))}</div>` : "")
+    );
+  }
+
+  departmentRows() {
+    return (
+      this._departments
+        .map((d) => this.row(d.key, d.label, d.key, this.t("articles_n", { n: d.articles })))
+        .join("") +
+      `<div class="count">${escapeHtml(this.t("stores"))}</div>` +
+      this._stores.map((s) => this.row(`store:${s.store}`, s.store, s.source, `${s.lists}`)).join("")
+    );
+  }
+
+  binRows() {
+    return this._bin
+      .map((entry) =>
+        this.row(
+          `bin:${entry.kind}:${entry.name}`,
+          entry.name,
+          `${this.t(entry.kind === "dish" ? "dish" : "article")} · ${this.fmt(entry.on, { day: "numeric", month: "short" })}`,
+        ),
+      )
+      .join("");
+  }
+
+  /** The one thing you can add in this mode, at the bottom where adding goes.
+   *
+   *  Not articles: an article comes into existence by being written on a list,
+   *  without a single question asked, and a form here would be a second, worse
+   *  way to do the same thing. */
+  addRow() {
+    if (this._mode === "bin" || this._mode === "articles") return "";
+    const label = { dishes: "new_dish", departments: "new_department" }[this._mode];
+    return `<div class="add" style="display:flex;gap:8px;padding:8px 16px 12px">
+      <input type="text" class="fresh" placeholder="${escapeHtml(this.t(label))}">
+      <button data-act="create" style="border:1px solid var(--divider-color);border-radius:10px;padding:0 14px;min-height:40px">＋</button>
+    </div>${this._mode === "departments" ? `<div class="add" style="display:flex;gap:8px;padding:0 16px 12px">
+      <input type="text" class="fresh-store" placeholder="${escapeHtml(this.t("new_store"))}">
+      <button data-act="create-store" style="border:1px solid var(--divider-color);border-radius:10px;padding:0 14px;min-height:40px">＋</button>
+    </div>` : ""}`;
+  }
+
+  sheet() {
+    if (!this._open) return "";
+    const key = this._open;
+    if (key.startsWith("bin:")) {
+      const [, kind, ...rest] = key.split(":");
+      return this.wrap(rest.join(":"), `<div class="actions">
+        <button class="primary" data-act="restore" data-kind="${escapeHtml(kind)}">${escapeHtml(this.t("restore"))}</button>
+        <button data-act="discard" data-kind="${escapeHtml(kind)}">${escapeHtml(this._confirming ? this.t("sure_remove") : this.t("discard"))}</button>
+      </div>`);
+    }
+    if (key.startsWith("store:")) {
+      return this.wrap(key.slice(6), `<div class="actions">
+        <button data-act="remove-store">${escapeHtml(this._confirming ? this.t("sure_remove") : this.t("remove"))}</button>
+      </div>`);
+    }
+    if (this._mode === "departments") return this.departmentSheet(key);
+    if (this._mode === "dishes") return this.dishSheet(key);
+    return this.articleSheet(key);
+  }
+
+  wrap(title, body) {
+    return `<div class="sheet">
+      <div class="title"><b>${escapeHtml(title)}</b>
+        <button data-act="close" aria-label="${escapeHtml(this.t("close"))}">✕</button></div>
+      ${body}
+    </div>`;
+  }
+
+  dishSheet(name) {
+    const dish = this._dishes.find((d) => d.name === name) || { fresh: [], pantry: [], unclassified: [] };
+    const ingredients = [...dish.fresh, ...dish.pantry, ...dish.unclassified].join("\n");
+    const days = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+    return this.wrap(
+      name,
+      `<label>${escapeHtml(this.t("ingredients"))}</label>
+       <textarea class="ing">${escapeHtml(ingredients)}</textarea>
+       <label>${escapeHtml(this.t("usual_day"))}</label>
+       <select class="day">
+         <option value="">${escapeHtml(this.t("no_day"))}</option>
+         ${days.map((d, i) => `<option value="${d}"${dish.usual_day === d ? " selected" : ""}>${escapeHtml(this.weekday(i))}</option>`).join("")}
+       </select>
+       <div class="actions">
+         <button class="primary" data-act="save-dish">${escapeHtml(this.t("save"))}</button>
+         <button data-act="remove-dish">${escapeHtml(this._confirming ? this.t("sure_remove") : this.t("remove"))}</button>
+       </div>`,
+    );
+  }
+
+  articleSheet(name) {
+    const article = this._articles.find((a) => a.article === name) || {};
+    const others = this._articles.filter((a) => a.article !== name).map((a) => a.article);
+    return this.wrap(
+      name,
+      `<label>${escapeHtml(this.t("name"))}</label>
+       <div class="naming" style="display:flex;gap:8px">
+         <input type="text" class="rename" value="${escapeHtml(name)}">
+         <button data-act="rename" style="border:1px solid var(--divider-color);border-radius:10px;padding:0 14px;min-height:40px">${escapeHtml(this.t("save"))}</button>
+       </div>
+       <label>${escapeHtml(this.t("department"))}</label>
+       <select class="dept">
+         ${this.departmentOptions(article.department)}
+       </select>
+       <label>${escapeHtml(this.t("merge_into"))}</label>
+       <select class="merge">
+         <option value=""></option>
+         ${others.map((other) => `<option value="${escapeHtml(other)}">${escapeHtml(other)}</option>`).join("")}
+       </select>
+       <div class="actions">
+         <button data-act="remove-article">${escapeHtml(this._confirming ? this.t("sure_remove") : this.t("remove"))}</button>
+       </div>`,
+    );
+  }
+
+  departmentSheet(key) {
+    const department = this._departments.find((d) => d.key === key) || {};
+    return this.wrap(
+      department.label || key,
+      `<label>${escapeHtml(this.t("move_articles_to"))}</label>
+       <select class="dest">${this.departmentOptions(null, key)}</select>
+       <div class="actions">
+         <button data-act="remove-department" data-key="${escapeHtml(key)}">${escapeHtml(this._confirming ? this.t("sure_remove") : this.t("remove"))}</button>
+       </div>`,
+    );
+  }
+
+  departmentOptions(selected, exclude) {
+    const options = this._departments
+      .filter((d) => d.key !== exclude)
+      .map((d) => [d.key, d.label])
+      .sort((a, b) => a[1].localeCompare(b[1], this.lang));
+    options.push(["unknown", this.t("unclassified")]);
+    return options
+      .map(([key, label]) => `<option value="${escapeHtml(key)}"${key === selected ? " selected" : ""}>${escapeHtml(label)}</option>`)
+      .join("");
+  }
+
+  weekday(index) {
+    // 2026-06-01 was a Monday, so index 0 lands on Monday in every locale.
+    return new Intl.DateTimeFormat(this.lang, { weekday: "long" }).format(new Date(2026, 5, 1 + index));
+  }
+
+  onClick(event) {
+    const target = event.target.closest("[data-act]");
+    const action = target?.dataset.act;
+    if (!action) return;
+    if (action === "mode") {
+      this._mode = target.dataset.mode;
+      this._open = null;
+      this._confirming = false;
+      this.render();
+    }
+    if (action === "open") {
+      this._open = this._open === target.dataset.key ? null : target.dataset.key;
+      this._confirming = false;
+      this.render();
+      this._card.querySelector(".sheet")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+    if (action === "close") {
+      this._open = null;
+      this._confirming = false;
+      this.render();
+    }
+    if (action === "create") this.create();
+    if (action === "create-store") this.createStore();
+    if (action === "save-dish") this.saveDish();
+    if (action === "rename") this.renameArticle();
+    if (action === "restore") this.run("restore_deleted", { name: this._open.split(":").slice(2).join(":"), kind: target.dataset.kind });
+    if (action === "discard") {
+      const name = this._open.split(":").slice(2).join(":");
+      this.confirm(() => this.run("discard_deleted", { name, kind: target.dataset.kind }));
+    }
+    if (action === "remove-dish") this.confirm(() => this.run("remove_dish", { dish: this._open }));
+    if (action === "remove-article") this.confirm(() => this.removeArticle());
+    if (action === "remove-store") this.confirm(() => this.run("remove_store", { name: this._open.slice(6) }));
+    if (action === "remove-department") this.confirm(() => this.removeDepartment(target.dataset.key));
+  }
+
+  /** Removing is the one act you cannot inspect afterwards, so it asks twice.
+   *  The bin makes it recoverable; this makes it deliberate. */
+  confirm(run) {
+    if (!this._confirming) {
+      this._confirming = true;
+      this.render();
+      setTimeout(() => {
+        this._confirming = false;
+        this.render();
+      }, 4000);
+      return;
+    }
+    this._confirming = false;
+    run();
+  }
+
+  async run(service, data) {
+    await this.call(service, data);
+    this._open = null;
+    this.load();
+  }
+
+  async create() {
+    const input = this._card.querySelector("input.fresh");
+    const value = input?.value.trim();
+    if (!value) return;
+    input.value = "";
+    if (this._mode === "dishes") await this.call("set_dish", { dish: value });
+    else await this.call("set_department", { department: value, labels: { [this.lang]: value } });
+    this.load();
+  }
+
+  async createStore() {
+    const input = this._card.querySelector("input.fresh-store");
+    const value = input?.value.trim();
+    if (!value) return;
+    input.value = "";
+    await this.call("set_store", { name: value });
+    this.load();
+  }
+
+  async saveDish() {
+    const sheet = this._card.querySelector(".sheet");
+    const ingredients = sheet.querySelector("textarea.ing").value.split("\n").map((line) => line.trim()).filter(Boolean);
+    await this.call("set_dish", { dish: this._open, ingredients, usual_day: sheet.querySelector("select.day").value });
+    this._open = null;
+    this.load();
+  }
+
+  async renameArticle() {
+    const sheet = this._card.querySelector(".sheet");
+    const value = sheet.querySelector("input.rename").value.trim();
+    const merge = sheet.querySelector("select.merge").value;
+    const department = sheet.querySelector("select.dept").value;
+    const name = this._open;
+    this._open = null;
+    if (merge) await this.call("merge_articles", { article: name, into: merge });
+    else if (value && value !== name) await this.call("rename_article", { article: name, to: value });
+    if (department) await this.call("learn_article", { article: merge || value || name, department });
+    this.load();
+  }
+
+  async removeArticle() {
+    await this.call("remove_article", { article: this._open });
+    this._open = null;
+    this.load();
+  }
+
+  async removeDepartment(key) {
+    const destination = this._card.querySelector("select.dest")?.value || "unknown";
+    await this.call("remove_department", { department: key, move_to: destination });
+    this._open = null;
+    this.load();
+  }
+
+  getCardSize() {
+    return 10;
+  }
+
+  static getStubConfig() {
+    return { mode: "dishes" };
+  }
+}
+
 /* ----------------------------------------------------------------- register */
 
 const CARDS = [
@@ -1294,6 +1762,7 @@ const CARDS = [
   ["mealplan-list-card", MealplanListCard, "Meal Plan: list", "A shopping list with department headings, in the walking order of the store."],
   ["mealplan-round-card", MealplanRoundCard, "Meal Plan: round", "The fridge round and the cupboard round: one screen, one item after another."],
   ["mealplan-route-card", MealplanRouteCard, "Meal Plan: walking route", "Correct the order the departments come in, standing in the shop."],
+  ["mealplan-manage-card", MealplanManageCard, "Meal Plan: manage", "Dishes, articles, departments and shops — add, rename, merge, remove, restore."],
 ];
 
 window.customCards = window.customCards || [];

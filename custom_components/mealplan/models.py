@@ -383,6 +383,54 @@ class Event:
 
 
 @dataclass(slots=True)
+class Deleted:
+    """Something removed, kept whole so it can come back.
+
+    Nothing in this integration disappears the moment you ask for it to: a list
+    never drops an item quietly, a dormant dish stays in the type-ahead, and a
+    deleted article waits here. Deleting is the one act you cannot inspect
+    afterwards to see whether you meant it, so it is the one that has to be
+    undoable.
+
+    `payload` is the whole `to_dict()` of what was removed, and `refs` is what
+    had to be unpicked around it — the dishes an article was an ingredient of —
+    so putting it back really does put it back.
+    """
+
+    kind: str
+    """`dish` or `article`."""
+
+    name: str
+    on: date
+    payload: dict[str, Any] = field(default_factory=dict)
+    refs: list[dict[str, Any]] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Self | None:
+        """Build a trashed entry from stored data, or None if it is unusable."""
+        on = _as_date(data.get("on"))
+        if on is None or not data.get("kind") or not data.get("name"):
+            return None
+        return cls(
+            kind=str(data["kind"]),
+            name=str(data["name"]),
+            on=on,
+            payload=dict(data.get("payload") or {}),
+            refs=[dict(ref) for ref in data.get("refs") or []],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialise for storage."""
+        return {
+            "kind": self.kind,
+            "name": self.name,
+            "on": self.on.isoformat(),
+            "payload": self.payload,
+            "refs": self.refs,
+        }
+
+
+@dataclass(slots=True)
 class Listing:
     """One article, on one shopping list, on one day.
 

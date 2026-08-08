@@ -35,7 +35,7 @@ from .const import (
     StoreSource,
     When,
 )
-from .models import DayPlan, Dish, Ingredient, StoreOrder
+from .models import Article, DayPlan, Department, Dish, Ingredient, StoreOrder
 from .options import plan_options
 from .store import MealPlanStore
 from .types import MealPlanConfigEntry
@@ -546,6 +546,302 @@ def learn_article(
     return {"article": known.name, "department": known.department, "kind": known.kind}
 
 
+# ------------------------------------------------------------------ management
+
+
+def set_dish(
+    ctx: Context,
+    dish_name: str,
+    *,
+    ingredients: list[str] | None = None,
+    usual_day: str | None = None,
+    recipe_list: str | None = None,
+) -> dict[str, Any]:
+    """Say what a dish is, replacing what was there.
+
+    The counterpart of `learn_dish`, which only ever adds. Adding is the right
+    shape for teaching — you remember one more thing that goes in — but it
+    leaves no way to say "no, not that", and a dish that picked up a wrong
+    ingredient once keeps it forever.
+
+    What was measured about the dish is left alone: how often it was eaten and
+    when are facts about the household, not about this edit.
+    """
+    store = ctx.store
+    dish = store.dish(dish_name)
+    if dish is None:
+        dish = Dish(name=dish_name)
+        store.data.dishes[dish_name] = dish
+
+    if ingredients is not None:
+        known = {i.article: i for i in dish.ingredients}
+        fresh: list[Ingredient] = []
+        for name in ingredients:
+            clean = name.strip()
+            if not clean or clean in {i.article for i in fresh}:
+                continue
+            # Keep what was known about an ingredient that stays; only the ones
+            # you add by hand start out as certain and manual.
+            if clean in known:
+                fresh.append(known[clean])
+                continue
+            article = store.ensure_article(clean)
+            fresh.append(
+                Ingredient(
+                    article=clean,
+                    certainty=Certainty.CERTAIN,
+                    source=IngredientSource.MANUAL,
+                    department=article.department,
+                )
+            )
+        dish.ingredients = fresh
+
+    if usual_day is not None:
+        dish.usual_day = usual_day or None
+    if recipe_list is not None:
+        dish.recipe_list = recipe_list or None
+
+    ctx.commit()
+    return {"dish": dish.name, "ingredients": [i.article for i in dish.ingredients], "usual_day": dish.usual_day}
+
+
+def remove_dish(ctx: Context, dish_name: str) -> dict[str, Any]:
+    """Move a dish to the bin.
+
+    Days already planned keep their dish: what was on the table is a fact and
+    does not become untrue because the recipe was tidied away.
+    """
+    store = ctx.store
+    dish = store.dish(dish_name)
+    if dish is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="unknown_dish", translation_placeholders={"dish": dish_name}
+        )
+    store.trash("dish", dish_name, dish.to_dict(), ctx.today, [])
+    del store.data.dishes[dish_name]
+    ctx.commit()
+    return {"dish": dish_name, "deleted": True}
+
+
+def remove_article(ctx: Context, article: str) -> dict[str, Any]:
+    """Move an article to the bin, and out of the dishes it was an ingredient of.
+
+    Which dishes those were is remembered, so putting it back really puts it
+    back. Lines already on a list are left alone — a list never loses a line
+    because of something done in a management screen.
+    """
+    store = ctx.store
+    known = store.article(article)
+    if known is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="unknown_article",
+            translation_placeholders={"article": article},
+        )
+
+    refs: list[dict[str, Any]] = []
+    for dish in store.data.dishes.values():
+        for ingredient in list(dish.ingredients):
+            if ingredient.article == article:
+                refs.append({"dish": dish.name, "ingredient": ingredient.to_dict()})
+                dish.ingredients.remove(ingredient)
+
+    store.trash("article", article, known.to_dict(), ctx.today, refs)
+    del store.data.articles[article]
+    ctx.commit()
+    return {"article": article, "deleted": True, "from_dishes": [ref["dish"] for ref in refs]}
+
+
+def restore_deleted(ctx: Context, name: str, kind: str = "article") -> dict[str, Any]:
+    """Take something back out of the bin, with everything it was attached to."""
+    store = ctx.store
+    entry = store.untrash(kind, name)
+    if entry is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="not_in_the_bin", translation_placeholders={"name": name}
+        )
+
+    if entry.kind == "dish":
+        store.data.dishes[entry.name] = Dish.from_dict(entry.payload)
+    else:
+        store.data.articles[entry.name] = Article.from_dict(entry.payload)
+        for ref in entry.refs:
+            dish = store.dish(str(ref.get("dish")))
+            if dish is not None and all(i.article != entry.name for i in dish.ingredients):
+                dish.ingredients.append(Ingredient.from_dict(ref["ingredient"]))
+
+    ctx.commit()
+    return {"name": entry.name, "kind": entry.kind, "restored": True}
+
+
+def discard_deleted(ctx: Context, name: str, kind: str = "article") -> dict[str, Any]:
+    """Throw something out of the bin for good.
+
+    The other end of the bin, and it has to exist: a bin nobody can empty is a
+    place things accumulate rather than a safety net, and something deleted
+    because it should not have been written down deserves to actually go.
+    """
+    entry = ctx.store.untrash(kind, name)
+    if entry is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="not_in_the_bin", translation_placeholders={"name": name}
+        )
+    ctx.commit()
+    return {"name": entry.name, "kind": entry.kind, "discarded": True}
+
+
+def rename_article(ctx: Context, article: str, to: str) -> dict[str, Any]:
+    """Rename an article everywhere it appears, history included."""
+    store = ctx.store
+    new = to.strip()
+    if not new:
+        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="empty_name")
+    if store.article(article) is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="unknown_article",
+            translation_placeholders={"article": article},
+        )
+
+    merged = store.article(new) is not None and new != article
+    touched = store.rename_article_everywhere(article, new)
+    store.sort_list(ListName.SHOPPING, ctx.selected_store)
+    ctx.commit()
+    return {"article": new, "was": article, "references": touched, "merged": merged}
+
+
+def merge_articles(ctx: Context, article: str, into: str) -> dict[str, Any]:
+    """Fold one article into another, counts, history and all."""
+    store = ctx.store
+    if article == into:
+        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="merge_with_itself")
+    if store.article(article) is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="unknown_article",
+            translation_placeholders={"article": article},
+        )
+
+    kept = store.merge_articles(article, into)
+    store.sort_list(ListName.SHOPPING, ctx.selected_store)
+    ctx.commit()
+    return {"article": kept.name, "absorbed": article, "times": kept.times}
+
+
+def set_department(
+    ctx: Context,
+    key: str,
+    *,
+    labels: dict[str, str] | None = None,
+    kind: Kind | None = None,
+    shelf_life: ShelfLife | None = None,
+    position: int | None = None,
+) -> dict[str, Any]:
+    """Add a department, or change one. Both, because they are the same edit.
+
+    The order of the list is the walking route of a typical shop, so a new
+    department has to be able to land somewhere in it rather than always at the
+    end.
+    """
+    store = ctx.store
+    department = store.department(key)
+    if department is None:
+        department = Department(key=key, labels=dict(labels or {}))
+        store.data.departments.append(department)
+    if labels:
+        department.labels.update(labels)
+    if kind is not None:
+        department.kind = kind
+    if shelf_life is not None:
+        department.shelf_life = shelf_life
+
+    if position is not None:
+        store.data.departments.remove(department)
+        store.data.departments.insert(max(0, min(position, len(store.data.departments))), department)
+
+    for list_name in (ListName.SHOPPING, ListName.LATER):
+        store.sort_list(list_name, ctx.selected_store)
+    ctx.commit()
+    return {"department": key, "labels": department.labels, "kind": str(department.kind)}
+
+
+def remove_department(ctx: Context, key: str, move_to: str = UNKNOWN_DEPARTMENT) -> dict[str, Any]:
+    """Remove a department, after saying where its articles go.
+
+    Not optional and not defaulted away: a department with thirty articles in it
+    is thirty articles that end up somewhere, and the only wrong answer is the
+    one nobody was asked.
+    """
+    store = ctx.store
+    if store.department(key) is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="unknown_department",
+            translation_placeholders={"department": key},
+        )
+    if move_to != UNKNOWN_DEPARTMENT and store.department(move_to) is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="unknown_department",
+            translation_placeholders={"department": move_to},
+        )
+
+    moved = [article.name for article in store.data.articles.values() if article.department == key]
+    for name in moved:
+        store.data.articles[name].department = move_to
+    for list_name in (ListName.SHOPPING, ListName.LATER, ListName.STOCK):
+        for item in store.items(list_name):
+            if item.department == key:
+                item.department = move_to
+        store.sort_list(list_name, ctx.selected_store)
+
+    store.data.departments = [d for d in store.data.departments if d.key != key]
+    for order in store.data.stores.values():
+        order.department_order = [d for d in order.department_order if d != key]
+
+    ctx.commit()
+    return {"department": key, "moved_to": move_to, "articles": moved}
+
+
+def set_store(ctx: Context, name: str) -> dict[str, Any]:
+    """Add a store, with the department order as it stands as its starting route."""
+    store = ctx.store
+    clean = name.strip()
+    if not clean:
+        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="empty_name")
+    if clean not in store.data.stores:
+        store.data.stores[clean] = StoreOrder(
+            department_order=store.department_keys, lists=0, source=StoreSource.MANUAL
+        )
+    ctx.commit()
+    return {"store": clean, "department_order": store.store_order(clean)}
+
+
+def remove_store(ctx: Context, name: str) -> dict[str, Any]:
+    """Remove a store and the walking route that belonged to it."""
+    store = ctx.store
+    if name not in store.data.stores:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="unknown_store", translation_placeholders={"store": name}
+        )
+    del store.data.stores[name]
+    ctx.commit()
+    return {"store": name, "deleted": True}
+
+
+def forget_events(ctx: Context, since: date, until: date, kind: EventKind | None = None) -> dict[str, Any]:
+    """Drop a stretch of the history.
+
+    Deliberately blunt and deliberately narrow: two dates and, if you want, one
+    kind. There is no "forget everything about coffee", because the reason this
+    exists is a run of rows made on one evening by something that was not the
+    household.
+    """
+    forgotten = ctx.store.forget_events(since, until, kind)
+    ctx.commit()
+    return {"since": since.isoformat(), "until": until.isoformat(), "forgotten": forgotten}
+
+
 def set_window(
     ctx: Context,
     *,
@@ -624,6 +920,90 @@ def list_dishes(ctx: Context) -> dict[str, Any]:
             }
         )
     return {"dishes": dishes}
+
+
+def list_articles(ctx: Context, search: str | None = None) -> dict[str, Any]:
+    """Return every article, alphabetically, with what a management screen needs.
+
+    Alphabetical because this is a list you look something up in: you know the
+    name, you want the row. That is the opposite end of the rule from the chips
+    you grab at, which lead with whatever you used last.
+    """
+    store = ctx.store
+    needle = (search or "").casefold().strip()
+    in_dishes: dict[str, list[str]] = {}
+    for dish in store.data.dishes.values():
+        for ingredient in dish.ingredients:
+            in_dishes.setdefault(ingredient.article, []).append(dish.name)
+
+    articles = []
+    for name, article in sorted(store.data.articles.items(), key=lambda pair: pair[0].casefold()):
+        if needle and needle not in name.casefold():
+            continue
+        last = store.last_listed(name)
+        articles.append(
+            {
+                "article": name,
+                "department": article.department,
+                "label": store.department_label(article.department, ctx.language),
+                "department_source": str(article.department_source),
+                "kind": str(kind) if (kind := store.article_kind(name)) else None,
+                "times": article.times,
+                "last_listed": last.isoformat() if last else None,
+                "cadence_days": store.cadence_days(name),
+                "staple": article.staple,
+                "availability": article.availability,
+                "shelf_life": str(article.shelf_life),
+                "dishes": sorted(in_dishes.get(name, [])),
+            }
+        )
+    return {"total": len(store.data.articles), "returned": len(articles), "articles": articles}
+
+
+def list_departments(ctx: Context) -> dict[str, Any]:
+    """Return the departments in walking order, with how much sits in each.
+
+    Walking order here, not alphabetical: this list *is* the route, and the
+    count is what makes "remove this one" a question you can answer — thirty
+    articles have to go somewhere.
+    """
+    store = ctx.store
+    counts: dict[str, int] = {}
+    for article in store.data.articles.values():
+        counts[article.department] = counts.get(article.department, 0) + 1
+
+    return {
+        "departments": [
+            {
+                "key": key,
+                "label": store.department_label(key, ctx.language),
+                "kind": str(department.kind) if (department := store.department(key)) else None,
+                "shelf_life": str(department.shelf_life) if department else None,
+                "articles": counts.get(key, 0),
+            }
+            for key in store.store_order(ctx.selected_store)
+        ],
+        "stores": [
+            {
+                "store": name,
+                "lists": order.lists,
+                "source": str(order.source),
+                "last_shopped": last.isoformat() if (last := store.last_shopped(name)) else None,
+            }
+            for name, order in sorted(store.data.stores.items())
+        ],
+        "unclassified": counts.get(UNKNOWN_DEPARTMENT, 0),
+    }
+
+
+def get_deleted(ctx: Context) -> dict[str, Any]:
+    """Return what is in the bin, most recently binned first."""
+    return {
+        "deleted": [
+            {"name": entry.name, "kind": entry.kind, "on": entry.on.isoformat(), "from_dishes": len(entry.refs)}
+            for entry in sorted(ctx.store.data.deleted, key=lambda entry: entry.on, reverse=True)
+        ]
+    }
 
 
 def get_history(

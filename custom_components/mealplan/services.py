@@ -30,16 +30,22 @@ from .const import (
     ATTR_INCLUDE_COMPLETED,
     ATTR_INCLUDE_PANTRY,
     ATTR_INGREDIENTS,
+    ATTR_INTO,
     ATTR_ITEM,
     ATTR_KIND,
     ATTR_KNOWLEDGE,
+    ATTR_LABELS,
     ATTR_LIMIT,
     ATTR_LIST,
+    ATTR_MOVE_TO,
+    ATTR_NAME,
     ATTR_NOTE,
     ATTR_OFFSET,
     ATTR_PEOPLE,
+    ATTR_POSITION,
     ATTR_ROUND,
     ATTR_SCOPE,
+    ATTR_SEARCH,
     ATTR_SERVINGS,
     ATTR_SINCE,
     ATTR_START,
@@ -51,7 +57,10 @@ from .const import (
     SERVICE_ADD_DISH,
     SERVICE_CHECK_OFF,
     SERVICE_COMPLETE_ALL,
+    SERVICE_DISCARD_DELETED,
     SERVICE_EXPORT_KNOWLEDGE,
+    SERVICE_FORGET_EVENTS,
+    SERVICE_GET_DELETED,
     SERVICE_GET_EXPIRING,
     SERVICE_GET_HISTORY,
     SERVICE_GET_LIST,
@@ -59,19 +68,33 @@ from .const import (
     SERVICE_GET_WEEK,
     SERVICE_IMPORT_KNOWLEDGE,
     SERVICE_LEARN_DISH,
+    SERVICE_LIST_ARTICLES,
+    SERVICE_LIST_DEPARTMENTS,
     SERVICE_LIST_DISHES,
+    SERVICE_MERGE_ARTICLES,
     SERVICE_MOVE_ALL,
     SERVICE_MOVE_ITEM,
     SERVICE_PLAN_MENU,
     SERVICE_PRINT_LIST,
+    SERVICE_REMOVE_ARTICLE,
+    SERVICE_REMOVE_DEPARTMENT,
+    SERVICE_REMOVE_DISH,
+    SERVICE_REMOVE_STORE,
+    SERVICE_RENAME_ARTICLE,
     SERVICE_RESET_ROUND,
+    SERVICE_RESTORE_DELETED,
     SERVICE_RUNNING_LOW,
+    SERVICE_SET_DEPARTMENT,
+    SERVICE_SET_DISH,
     SERVICE_SET_EXPIRY,
+    SERVICE_SET_STORE,
     SERVICE_SET_STORE_ORDER,
     SERVICE_SORT_LIST,
     SERVICE_SUGGEST_MENU,
+    UNKNOWN_DEPARTMENT,
     WEEKDAYS,
     EventKind,
+    Kind,
     ListName,
     PantryScope,
     Round,
@@ -391,6 +414,199 @@ def async_setup_services(hass: HomeAssistant) -> None:
         supports_response=SupportsResponse.OPTIONAL,
     )
 
+    # ------------------------------------------------------------ management
+
+    async def handle_set_dish(call: ServiceCall) -> ServiceResponse:
+        return api.set_dish(
+            _ctx(hass, call),
+            call.data[ATTR_DISH],
+            ingredients=call.data.get(ATTR_INGREDIENTS),
+            usual_day=call.data.get(ATTR_USUAL_DAY),
+            recipe_list=call.data.get(ATTR_RECIPE_LIST),
+        )
+
+    register(
+        DOMAIN,
+        SERVICE_SET_DISH,
+        handle_set_dish,
+        schema=_schema(
+            {
+                vol.Required(ATTR_DISH): cv.string,
+                vol.Optional(ATTR_INGREDIENTS): vol.All(cv.ensure_list, [cv.string]),
+                vol.Optional(ATTR_USUAL_DAY): vol.Any("", vol.In(list(WEEKDAYS))),
+                vol.Optional(ATTR_RECIPE_LIST): cv.string,
+            }
+        ),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    async def handle_remove_dish(call: ServiceCall) -> ServiceResponse:
+        return api.remove_dish(_ctx(hass, call), call.data[ATTR_DISH])
+
+    register(
+        DOMAIN,
+        SERVICE_REMOVE_DISH,
+        handle_remove_dish,
+        schema=_schema({vol.Required(ATTR_DISH): cv.string}),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    async def handle_remove_article(call: ServiceCall) -> ServiceResponse:
+        return api.remove_article(_ctx(hass, call), call.data[ATTR_ARTICLE])
+
+    register(
+        DOMAIN,
+        SERVICE_REMOVE_ARTICLE,
+        handle_remove_article,
+        schema=_schema({vol.Required(ATTR_ARTICLE): cv.string}),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    async def handle_rename_article(call: ServiceCall) -> ServiceResponse:
+        return api.rename_article(_ctx(hass, call), call.data[ATTR_ARTICLE], call.data[ATTR_TO])
+
+    register(
+        DOMAIN,
+        SERVICE_RENAME_ARTICLE,
+        handle_rename_article,
+        schema=_schema({vol.Required(ATTR_ARTICLE): cv.string, vol.Required(ATTR_TO): cv.string}),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    async def handle_merge_articles(call: ServiceCall) -> ServiceResponse:
+        return api.merge_articles(_ctx(hass, call), call.data[ATTR_ARTICLE], call.data[ATTR_INTO])
+
+    register(
+        DOMAIN,
+        SERVICE_MERGE_ARTICLES,
+        handle_merge_articles,
+        schema=_schema({vol.Required(ATTR_ARTICLE): cv.string, vol.Required(ATTR_INTO): cv.string}),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    async def handle_set_department(call: ServiceCall) -> ServiceResponse:
+        kind = call.data.get(ATTR_KIND)
+        shelf_life = call.data.get(ATTR_SHELF_LIFE)
+        return api.set_department(
+            _ctx(hass, call),
+            call.data[ATTR_DEPARTMENT],
+            labels=call.data.get(ATTR_LABELS),
+            kind=Kind(kind) if kind else None,
+            shelf_life=ShelfLife(shelf_life) if shelf_life else None,
+            position=call.data.get(ATTR_POSITION),
+        )
+
+    register(
+        DOMAIN,
+        SERVICE_SET_DEPARTMENT,
+        handle_set_department,
+        schema=_schema(
+            {
+                vol.Required(ATTR_DEPARTMENT): cv.string,
+                vol.Optional(ATTR_LABELS): dict,
+                vol.Optional(ATTR_KIND): vol.In([str(k) for k in Kind]),
+                vol.Optional(ATTR_SHELF_LIFE): vol.In([str(s) for s in ShelfLife]),
+                vol.Optional(ATTR_POSITION): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            }
+        ),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    async def handle_remove_department(call: ServiceCall) -> ServiceResponse:
+        return api.remove_department(
+            _ctx(hass, call), call.data[ATTR_DEPARTMENT], call.data.get(ATTR_MOVE_TO, UNKNOWN_DEPARTMENT)
+        )
+
+    register(
+        DOMAIN,
+        SERVICE_REMOVE_DEPARTMENT,
+        handle_remove_department,
+        schema=_schema(
+            {
+                vol.Required(ATTR_DEPARTMENT): cv.string,
+                vol.Optional(ATTR_MOVE_TO, default=UNKNOWN_DEPARTMENT): cv.string,
+            }
+        ),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    async def handle_set_store(call: ServiceCall) -> ServiceResponse:
+        return api.set_store(_ctx(hass, call), call.data[ATTR_NAME])
+
+    register(
+        DOMAIN,
+        SERVICE_SET_STORE,
+        handle_set_store,
+        schema=_schema({vol.Required(ATTR_NAME): cv.string}),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    async def handle_remove_store(call: ServiceCall) -> ServiceResponse:
+        return api.remove_store(_ctx(hass, call), call.data[ATTR_NAME])
+
+    register(
+        DOMAIN,
+        SERVICE_REMOVE_STORE,
+        handle_remove_store,
+        schema=_schema({vol.Required(ATTR_NAME): cv.string}),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    async def handle_restore_deleted(call: ServiceCall) -> ServiceResponse:
+        return api.restore_deleted(_ctx(hass, call), call.data[ATTR_NAME], call.data.get(ATTR_KIND, "article"))
+
+    register(
+        DOMAIN,
+        SERVICE_RESTORE_DELETED,
+        handle_restore_deleted,
+        schema=_schema(
+            {
+                vol.Required(ATTR_NAME): cv.string,
+                vol.Optional(ATTR_KIND, default="article"): vol.In(["article", "dish"]),
+            }
+        ),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    async def handle_discard_deleted(call: ServiceCall) -> ServiceResponse:
+        return api.discard_deleted(_ctx(hass, call), call.data[ATTR_NAME], call.data.get(ATTR_KIND, "article"))
+
+    register(
+        DOMAIN,
+        SERVICE_DISCARD_DELETED,
+        handle_discard_deleted,
+        schema=_schema(
+            {
+                vol.Required(ATTR_NAME): cv.string,
+                vol.Optional(ATTR_KIND, default="article"): vol.In(["article", "dish"]),
+            }
+        ),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    async def handle_forget_events(call: ServiceCall) -> ServiceResponse:
+        kind = call.data.get(ATTR_KIND)
+        return api.forget_events(
+            _ctx(hass, call),
+            call.data[ATTR_SINCE],
+            call.data[ATTR_UNTIL],
+            EventKind(kind) if kind else None,
+        )
+
+    register(
+        DOMAIN,
+        SERVICE_FORGET_EVENTS,
+        handle_forget_events,
+        schema=_schema(
+            {
+                vol.Required(ATTR_SINCE): cv.date,
+                vol.Required(ATTR_UNTIL): cv.date,
+                vol.Optional(ATTR_KIND): vol.In([str(kind) for kind in EventKind]),
+            }
+        ),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
     async def handle_set_window(call: ServiceCall) -> ServiceResponse:
         return api.set_window(
             _ctx(hass, call),
@@ -524,6 +740,39 @@ def async_setup_services(hass: HomeAssistant) -> None:
         DOMAIN,
         SERVICE_LIST_DISHES,
         handle_list_dishes,
+        schema=_schema({}),
+        supports_response=SupportsResponse.ONLY,
+    )
+
+    async def handle_list_articles(call: ServiceCall) -> ServiceResponse:
+        return api.list_articles(_ctx(hass, call), call.data.get(ATTR_SEARCH))
+
+    register(
+        DOMAIN,
+        SERVICE_LIST_ARTICLES,
+        handle_list_articles,
+        schema=_schema({vol.Optional(ATTR_SEARCH): cv.string}),
+        supports_response=SupportsResponse.ONLY,
+    )
+
+    async def handle_list_departments(call: ServiceCall) -> ServiceResponse:
+        return api.list_departments(_ctx(hass, call))
+
+    register(
+        DOMAIN,
+        SERVICE_LIST_DEPARTMENTS,
+        handle_list_departments,
+        schema=_schema({}),
+        supports_response=SupportsResponse.ONLY,
+    )
+
+    async def handle_get_deleted(call: ServiceCall) -> ServiceResponse:
+        return api.get_deleted(_ctx(hass, call))
+
+    register(
+        DOMAIN,
+        SERVICE_GET_DELETED,
+        handle_get_deleted,
         schema=_schema({}),
         supports_response=SupportsResponse.ONLY,
     )

@@ -459,3 +459,182 @@ suggest_menu:
           min: 1
           max: 10
           mode: box
+
+set_dish:
+  fields:
+    entry_id: &entry
+      selector:
+        config_entry:
+          integration: mealplan
+    dish:
+      required: true
+      selector:
+        text:
+    ingredients:
+      selector:
+        object:
+    usual_day:
+      selector:
+        select:
+          translation_key: weekday
+          options: [mon, tue, wed, thu, fri, sat, sun]
+    recipe_list:
+      selector:
+        text:
+
+remove_dish:
+  fields:
+    entry_id: *entry
+    dish:
+      required: true
+      selector:
+        text:
+
+remove_article:
+  fields:
+    entry_id: *entry
+    article:
+      required: true
+      selector:
+        text:
+
+rename_article:
+  fields:
+    entry_id: *entry
+    article:
+      required: true
+      selector:
+        text:
+    to:
+      required: true
+      selector:
+        text:
+
+merge_articles:
+  fields:
+    entry_id: *entry
+    article:
+      required: true
+      selector:
+        text:
+    into:
+      required: true
+      selector:
+        text:
+
+set_department:
+  fields:
+    entry_id: *entry
+    department:
+      required: true
+      selector:
+        text:
+    labels:
+      selector:
+        object:
+    kind:
+      selector:
+        select:
+          translation_key: department_kind
+          options: [fresh, pantry]
+    shelf_life:
+      selector:
+        select:
+          translation_key: shelf_life
+          options: [important, near_only, ignore]
+    position:
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+
+remove_department:
+  fields:
+    entry_id: *entry
+    department:
+      required: true
+      selector:
+        text:
+    move_to:
+      selector:
+        text:
+
+set_store:
+  fields:
+    entry_id: *entry
+    name:
+      required: true
+      selector:
+        text:
+
+remove_store:
+  fields:
+    entry_id: *entry
+    name:
+      required: true
+      selector:
+        text:
+
+restore_deleted:
+  fields:
+    entry_id: *entry
+    name:
+      required: true
+      selector:
+        text:
+    kind:
+      default: article
+      selector:
+        select:
+          translation_key: deleted_kind
+          options: [article, dish]
+
+forget_events:
+  fields:
+    entry_id: *entry
+    since:
+      required: true
+      selector:
+        date:
+    until:
+      required: true
+      selector:
+        date:
+    kind:
+      selector:
+        select:
+          translation_key: event_kind
+          options: [listed, unlisted, bought, eaten, checked, stocked, used]
+
+list_articles:
+  fields:
+    entry_id: *entry
+    search:
+      selector:
+        text:
+
+list_departments:
+  fields:
+    entry_id: *entry
+
+get_deleted:
+  fields:
+    entry_id: *entry
+
+discard_deleted:
+  fields:
+    entry_id:
+      selector:
+        config_entry:
+          integration: mealplan
+    name:
+      required: true
+      selector:
+        text:
+    kind:
+      default: article
+      selector:
+        select:
+          translation_key: deleted_kind
+          options: [article, dish]

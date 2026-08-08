@@ -38,7 +38,7 @@ from .const import (
     ShelfLife,
 )
 from .defaults import DEFAULT_DEPARTMENTS
-from .models import Article, DayPlan, Department, Dish, Event, Listing, ListItem, StoreOrder
+from .models import Article, DayPlan, Deleted, Department, Dish, Event, Listing, ListItem, StoreOrder
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -78,6 +78,7 @@ class MealPlanData:
     plan: dict[date, DayPlan] = field(default_factory=dict)
     listings: list[Listing] = field(default_factory=list)
     events: list[Event] = field(default_factory=list)
+    deleted: list[Deleted] = field(default_factory=list)
     lists: dict[str, list[ListItem]] = field(default_factory=dict)
     window_end: date | None = None
     """A stretched end date for the menu window, or None for its natural length."""
@@ -117,6 +118,7 @@ class MealPlanStore:
 
         listings = [Listing.from_dict(item) for item in raw.get("listings") or []]
         events = [Event.from_dict(item) for item in raw.get("events") or []]
+        deleted = [Deleted.from_dict(item) for item in raw.get("deleted") or []]
 
         return MealPlanData(
             departments=[Department.from_dict(d) for d in raw.get("departments") or DEFAULT_DEPARTMENTS],
@@ -126,6 +128,7 @@ class MealPlanStore:
             plan=plan,
             listings=[item for item in listings if item is not None],
             events=[item for item in events if item is not None],
+            deleted=[item for item in deleted if item is not None],
             lists={name: [ListItem.from_dict(i) for i in items] for name, items in (raw.get("lists") or {}).items()},
             window_end=_parse_date(raw.get("window_end")),
             source=raw.get("source") or {},
@@ -141,6 +144,7 @@ class MealPlanStore:
             "plan": {day.isoformat(): entry.to_dict() for day, entry in sorted(self.data.plan.items())},
             "listings": [item.to_dict() for item in self.data.listings],
             "events": [item.to_dict() for item in self.data.events],
+            "deleted": [item.to_dict() for item in self.data.deleted],
             "lists": {name: [i.to_dict() for i in items] for name, items in self.data.lists.items()},
             "window_end": self.data.window_end.isoformat() if self.data.window_end else None,
             "source": self.data.source,
@@ -629,6 +633,120 @@ class MealPlanStore:
         done = [item for item in items if item.completed]
         open_items.sort(key=lambda item: self.sort_index(item.department, store))
         self.data.lists[str(list_name)] = open_items + done
+
+    # ------------------------------------------------------------- management
+
+    def trash(self, kind: str, name: str, payload: dict[str, Any], on: date, refs: list[dict[str, Any]]) -> Deleted:
+        """Put something in the bin rather than throwing it away."""
+        entry = Deleted(kind=kind, name=name, on=on, payload=payload, refs=refs)
+        self.data.deleted = [d for d in self.data.deleted if not (d.kind == kind and d.name == name)]
+        self.data.deleted.append(entry)
+        return entry
+
+    def untrash(self, kind: str, name: str) -> Deleted | None:
+        """Take something back out of the bin, or return None if it is not there."""
+        entry = next((d for d in self.data.deleted if d.kind == kind and d.name == name), None)
+        if entry is not None:
+            self.data.deleted.remove(entry)
+        return entry
+
+    def rename_article_everywhere(self, old: str, new: str) -> int:
+        """Rename an article and every reference to it, and say how many moved.
+
+        History included, and that is the point. "When did we last buy coffee"
+        is answered from the events, so a rename that stopped at the article
+        table would silently shorten the history of everything it touched — the
+        cadence would reset and the article would look brand new.
+        """
+        touched = 0
+        article = self.data.articles.pop(old, None)
+        if article is not None:
+            # Renaming onto a name that already exists is a merge, and saying so
+            # here means there is one code path for both rather than two that
+            # have to agree about what a history is worth.
+            existing = self.data.articles.get(new)
+            if existing is not None:
+                self._absorb(existing, article)
+            else:
+                article.name = new
+                self.data.articles[new] = article
+            touched += 1
+
+        for dish in self.data.dishes.values():
+            for ingredient in dish.ingredients:
+                if ingredient.article == old:
+                    ingredient.article = new
+                    touched += 1
+
+        for listing in self.data.listings:
+            if listing.article == old:
+                listing.article = new
+                touched += 1
+
+        for event in self.data.events:
+            if event.article == old:
+                event.article = new
+                touched += 1
+
+        for list_name in (ListName.SHOPPING, ListName.LATER, ListName.STOCK):
+            for item in self.items(list_name):
+                if item.article == old:
+                    item.article = new
+                    touched += 1
+                # Only the summary that was the article's name; a line somebody
+                # wrote in their own words stays in their own words.
+                if item.summary == old:
+                    item.summary = new
+
+        return touched
+
+    def merge_articles(self, source: str, target: str) -> Article:
+        """Fold one article into another, keeping everything both of them knew.
+
+        Two spellings of the same thing each carry half a history, which makes
+        both of them look rarer than the thing actually is. Merging is the only
+        way a list of a few hundred articles stays a list rather than a pile.
+        """
+        self.ensure_article(target)
+        self.rename_article_everywhere(source, target)
+        return self.data.articles[target]
+
+    @staticmethod
+    def _absorb(keeper: Article, losing: Article) -> None:
+        """Fold one article's counts into another's.
+
+        The counts add up, because they counted different halves of the same
+        thing. The date is the *later* of the two: "last listed" means the most
+        recent time either spelling was written down, and taking the earlier one
+        would say the article is more overdue than it is.
+        """
+        keeper.times += losing.times
+        dates = [d for d in (keeper.last_listed, losing.last_listed) if d is not None]
+        keeper.last_listed = max(dates) if dates else None
+        keeper.staple = keeper.staple or losing.staple
+        keeper.expiry_seen = keeper.expiry_seen or losing.expiry_seen
+        if keeper.availability is None:
+            keeper.availability = losing.availability
+        if keeper.cadence_days is None:
+            keeper.cadence_days = losing.cadence_days
+
+    def forget_events(self, since: date, until: date, kind: EventKind | None = None) -> int:
+        """Drop a stretch of history, and say how much went.
+
+        Not an everyday tool. It exists because the acceptance run writes real
+        events into the real log — seventy-odd rows an evening that are true of
+        a test and of nothing else — and because a household that types a
+        month's worth of nonsense should be able to take it back.
+        """
+        doomed = {
+            id(event)
+            for event in self.data.events
+            if since <= event.on <= until and (kind is None or event.kind == kind)
+        }
+        if not doomed:
+            return 0
+        self.data.events = [event for event in self.data.events if id(event) not in doomed]
+        return len(doomed)
 
     def learn_suggestions(self) -> list[str]:
         """Return unclassified articles that have shown up often enough to be worth learning.

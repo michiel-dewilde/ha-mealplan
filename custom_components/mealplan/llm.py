@@ -299,6 +299,80 @@ def _tools(entry: MealPlanConfigEntry) -> list[llm.Tool]:
             {vol.Optional("store"): str},
             lambda ctx, args: api.sort_list(ctx, args.get("store")),
         ),
+        # ------------------------------------------------------------ managing
+        tool(
+            "list_articles",
+            "List every article the household knows, alphabetically, with its department, "
+            "how often it has been listed, when it last was, and which dishes use it. This "
+            "is where to look before renaming or merging anything: two spellings of the "
+            "same thing sit next to each other here.",
+            {vol.Optional("search"): str},
+            lambda ctx, args: api.list_articles(ctx, args.get("search")),
+        ),
+        tool(
+            "list_departments",
+            "List the departments in the walking order of the selected store, with how many "
+            "articles sit in each, plus the known stores and when each was last shopped at.",
+            {},
+            lambda ctx, args: api.list_departments(ctx),
+        ),
+        tool(
+            "set_dish",
+            "Say what a dish is, replacing its ingredient list rather than adding to it. "
+            "This is the only way an ingredient comes back out of a dish. What was measured "
+            "— how often it was eaten, and when — is left alone.",
+            {
+                vol.Required("dish"): str,
+                vol.Optional("ingredients"): [str],
+                vol.Optional("usual_day"): str,
+            },
+            lambda ctx, args: api.set_dish(
+                ctx, args["dish"], ingredients=args.get("ingredients"), usual_day=args.get("usual_day")
+            ),
+        ),
+        tool(
+            "rename_article",
+            "Rename an article everywhere it appears, history included. Renaming onto a "
+            "name that already exists merges the two. Ask the household before doing this: "
+            "it touches every count and every cadence that article has.",
+            {vol.Required("article"): str, vol.Required("to"): str},
+            lambda ctx, args: api.rename_article(ctx, args["article"], args["to"]),
+        ),
+        tool(
+            "merge_articles",
+            "Fold one article into another, adding up what both of them knew. For two "
+            "spellings of the same thing, which each carry half a history and so make both "
+            "look rarer than the thing is.",
+            {vol.Required("article"): str, vol.Required("into"): str},
+            lambda ctx, args: api.merge_articles(ctx, args["article"], args["into"]),
+        ),
+        tool(
+            "remove_article",
+            "Move an article to the bin and out of the dishes it was an ingredient of. "
+            "Nothing is lost: it can be restored, and lines already on a list stay there.",
+            {vol.Required("article"): str},
+            lambda ctx, args: api.remove_article(ctx, args["article"]),
+        ),
+        tool(
+            "remove_dish",
+            "Move a dish to the bin. Days already planned keep it — what was on the table "
+            "is a fact and does not become untrue.",
+            {vol.Required("dish"): str},
+            lambda ctx, args: api.remove_dish(ctx, args["dish"]),
+        ),
+        tool(
+            "restore_deleted",
+            "Take a deleted article or dish back out of the bin, with everything it was "
+            "attached to. Use `get_deleted` to see what is in there.",
+            {vol.Required("name"): str, vol.Optional("kind"): vol.In(["article", "dish"])},
+            lambda ctx, args: api.restore_deleted(ctx, args["name"], args.get("kind", "article")),
+        ),
+        tool(
+            "get_deleted",
+            "Read the bin: what has been deleted and can still be restored, most recent first.",
+            {},
+            lambda ctx, args: api.get_deleted(ctx),
+        ),
         tool(
             "export_knowledge",
             "Return everything the integration knows — departments, stores, articles, "
